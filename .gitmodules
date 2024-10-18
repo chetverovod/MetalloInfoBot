@@ -1,0 +1,3 @@
+[submodule "MotobikeServiceBot"]
+	path = MotobikeServiceBot
+	url = https://github.com/chetverovod/MotobikeServiceBot.git
