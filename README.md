@@ -45,14 +45,14 @@ wget https://storage.yandexcloud.net/natasha-navec/packs/navec_hudlit_v1_12B_500
     source ./vector_data_gen.sh 
     ```
 
-## Run bot or local chat
+## Run Telegram Bot or Local Chat
 
-### Bot
+### Telegram Bot
 ```
 source bot.sh
 ```
 
-### Local chat
+### Local Chat
 ```
 python model_io.py
 ```
