@@ -9,11 +9,9 @@ import argparse
 from collections import defaultdict
 from bs4 import BeautifulSoup, NavigableString
 import re
-import pandas
 
 # Load settings from configuration file.
 cfg = config.Config('html_to_txt.cfg')
-COLLECTION_NAME = cfg['collection_name']
 REF_DOCS_PATH = cfg['reference_docs_path']
 TITLE_TAG = cfg['title_tag']
 SOURCE_TAG = cfg['source_tag']
@@ -276,14 +274,6 @@ def build_single_txt_doc(filename: str, mode: str = '',
                 f.write(f"\n{txt}\n")
         print(f"{local_page_counter} pages found.")
     return complete_text, page_counter
-
-
-def get_tables(filename):
-    tables_on_page = pandas.read_html(filename)
-    print ('len = ', len(tables_on_page))
-    table = tables_on_page[0]
-    table.to_json("table.json", index=False, orient='table')
-    print(table)
 
 
 def build_txt(mode: str = '', page_separator: str = '') -> int:

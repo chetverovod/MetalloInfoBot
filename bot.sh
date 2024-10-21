@@ -1,1 +1,1 @@
-python MotoBikeServiceBot/bot.py -c settings.cfg -m models.cfg
+python MotobikeServiceBot/bot.py -c settings.cfg -m models.cfg
