@@ -1,2 +1,2 @@
-python  MotobikeServiceBot/gen_reference_data.py -m models.cfg
+python gen_reference_data.py -m models.cfg
 

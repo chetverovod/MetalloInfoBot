@@ -34,6 +34,11 @@ def build_collection() -> int:
     print(f'{EMBED_MODEL} embeddings selected.')
 
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
+    # Temporary jast two files parsing.
+    #files = ['1200108697.txt', '1200113779#7D20K3.txt']
+    files = ['ГОСТ 14637-89 (ИСО 4995-78).txt', 'ГОСТ 19281-2014.txt']
+    # https://docs.cntd.ru/document/1200113779
+    # https://docs.cntd.ru/document/1200000119
     text = ''
     chunks_counter = 0
     for path in files:

@@ -9,6 +9,8 @@ import argparse
 from collections import defaultdict
 from bs4 import BeautifulSoup, NavigableString
 import re
+from pathlib import Path
+from lxml_html_clean import Cleaner
 
 # Load settings from configuration file.
 cfg = config.Config('html_to_txt.cfg')
@@ -115,6 +117,124 @@ def scan_tag_text(tag):
         res = f'{s}'
     return res
 
+
+def sanitize(dirty_html):
+    cleaner = Cleaner(page_structure=True,
+                  meta=True,
+                  embedded=True,
+                  links=True,
+                  style=True,
+                  processing_instructions=True,
+                  inline_style=True,
+                  scripts=True,
+                  javascript=True,
+                  comments=True,
+                  frames=True,
+                  forms=True,
+                  annoying_tags=True,
+                  remove_unknown_tags=True,
+                  safe_attrs_only=True,
+                  safe_attrs=frozenset(['src', 'color', 'href', 'name']),
+                  remove_tags=( 'a', 'label', 'ul', 'i','li','footer', 'noscript', 'span', 'font', 'div', 'svg', 'img')
+                  )
+
+    return cleaner.clean_html(dirty_html)
+def _remove_attrs(soup):
+    for tag in soup.findAll(True): 
+        tag.attrs = None
+    return soup
+
+
+def extract_table(table):
+    postfix = '|'
+    seporator = ''
+    headers = []
+    rows = []
+    res = '' 
+    for i, row in enumerate(table.find_all('tr')):
+        if i == 0:
+            headers = [el.text.strip() for el in row.find_all('th')]
+        else:
+            rows.append([el.text.strip() for el in row.find_all('td')])    
+    print('|', "|".join(headers), "|")
+    res = f'| {postfix.join(headers)} |\n'
+    k = 0
+    max = -1
+    for row in rows:
+        if len(row) > max:
+            max = len(row)
+    for i, row in enumerate(rows):
+        if len(row) < max:
+            m = max - len(row)
+            for _ in range(m):
+                rows[i].append(' ')
+    for row in rows:
+        print("|", "|".join(row), "|")
+        res = f'| {postfix.join(row)} |\n'
+        if k == 0:
+            for _ in range(len(row)):
+                seporator += '|---'
+            seporator = seporator + postfix
+            print(seporator)
+            res = f'{res}{seporator}\n'
+            k += 1
+    return res
+
+
+def extract_tables(filename):
+    print(filename)
+    html = ''
+    with open(filename) as fp:
+        html = fp.read()
+    html = sanitize(html) 
+
+    """ 
+    html = html.replace('>', '>\n')
+    html = html.replace('<br>', ' ')
+    """
+    with open('temp.html', "w", encoding="utf-8") as f:
+        f.write(html)
+    soup = BeautifulSoup(html, "lxml")
+    t = 0 
+    #for table in soup.find_all('table', {'class': 'table-product'}):
+    for table in soup.find_all('table'):
+        t += 1
+        postfix='|'
+        seporator = ''
+        headers = []
+        rows = []
+        for i, row in enumerate(table.find_all('tr')):
+            if i == 0:
+                headers = [el.text.strip() for el in row.find_all('th')]
+            else:
+                rows.append([el.text.strip() for el in row.find_all('td')])    
+        print('|', "|".join(headers), "|")
+        k = 0
+        max = -1
+        for row in rows:
+            if len(row) > max:
+                max = len(row)
+        for i, row in enumerate(rows):
+            if len(row) < max:
+                m = max - len(row)
+                for _ in range(m):
+                    rows[i].append(' ')                  
+        
+        for row in rows:
+
+            print("|", "|".join(row), "|")
+            if k == 0:
+                for _ in range(len(row)):
+                    seporator += '|---'
+                seporator = seporator + postfix
+                print(seporator)
+                k += 1
+        print('\n***\n')
+
+    print(f'tables found: {t}')        
+    exit(0)     
+
+
 def build_flat_txt_doc(filename: str,
                        page_separator: str = '\n\n') -> (str, int):
     if not filename.endswith(".html"):
@@ -122,8 +242,19 @@ def build_flat_txt_doc(filename: str,
     page_counter = 0
     complete_text = ''
 
-    # Получаем содержимое страницы
+    s = '' 
     with open(filename) as fp:
+        s = fp.read()
+    s = s.replace('</table>', '</table><a tbl_end>')
+    s = s.replace('<table ', '<a tbl_start><table ')
+
+    with open('temp.html', "w", encoding="utf-8") as f:
+        f.write(f"{s}")
+             
+    # Получаем содержимое страницы
+    #with open(filename) as fp:
+    with open('temp.html', encoding="utf-8") as fp:
+
         soup = BeautifulSoup(fp, 'html.parser')
     """
     for tag in soup.find_all(): 
@@ -142,7 +273,8 @@ def build_flat_txt_doc(filename: str,
     """
     tags = soup.findAll()
     stop_list = [ 'html','body', 'head', 'a','form', 'div', 'meta','footer','input', 'button', 'script',
-                 'noscript', 'link', 'span', 'strong', 'style', 'use']
+                 'noscript', 'link', 'span', 'strong', 'style', 'use', 'symbol', 'path',
+                 'polygon', 'iframe', 'g', 'svg']
     no_new_line_list = ['td']
     for t in tags:
         N = f'<{t.name} '
@@ -278,6 +410,9 @@ def build_single_txt_doc(filename: str, mode: str = '',
 
 def build_txt(mode: str = '', page_separator: str = '') -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
+    # Temporary jast two files parsing.
+    #files = ['1200108697.html', '1200113779#7D20K3.html']
+    files = ['ГОСТ 14637-89 (ИСО 4995-78).html', 'ГОСТ 19281-2014.html']
     c = 0
     for path in files:
         if path.endswith(".html"):
@@ -291,10 +426,21 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
         # Игнорируем не html-файлы.
         if extentions[-1] != "html":
             continue
+        with open(filename, "r", encoding="utf-8") as f:
+            html = f.read()
+        soup = BeautifulSoup(html, "lxml")
+        tags = soup.findAll()
+        for t in tags:
+            if t.name  == 'table':
+                res = extract_table(t)
+                print(res)
+                print('***')
+        continue
         if page_separator == '':
             build_single_txt_doc(filename, mode)
         else:
             build_single_txt_doc(filename, mode, page_separator)
+
 
 def parse_html():
     # Получаем содержимое страницы
