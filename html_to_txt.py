@@ -431,10 +431,17 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
         soup = BeautifulSoup(html, "lxml")
         tags = soup.findAll()
         for t in tags:
-            if t.name  == 'table':
+            if t.name == 'table':
                 res = extract_table(t)
                 print(res)
                 print('***')
+            if t.name == 'h2':
+                res = t.text.strip()
+                print(f'## {res}\n')
+            if t.name == 'p':
+                res = t.text.strip()
+                print(f'\n{res}\n')
+                              
         continue
         if page_separator == '':
             build_single_txt_doc(filename, mode)
