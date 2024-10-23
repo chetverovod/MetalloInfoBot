@@ -17,7 +17,7 @@ MAIN_MODEL = cfg["mainmodel"]
 USE_CHAT = cfg['use_chat']
 COLLECTION_NAME = cfg['collection_name']
 PRINT_CONTEXT = cfg['print_context']
-
+CHROMA_PORT = cfg['chroma_port']
 
 def bytes_to_gb(bytes_value):
     return bytes_value / (1024 ** 3)
@@ -59,7 +59,7 @@ def get_collection(collection_name: str = None) -> chromadb.Collection:
         chromadb.Collection: A Chroma collection.
     """
 
-    chroma = chromadb.HttpClient(host="localhost", port=8000)
+    chroma = chromadb.HttpClient(host="localhost", port=CHROMA_PORT)
     collection = chroma.get_or_create_collection(collection_name)
     return collection
 
@@ -72,7 +72,7 @@ def free_mem_collection(collection_name: str = None) -> None:
         collection_name (str, optional): Name of the Chroma collection. Defaults to None.
     """
 
-    chroma_client = chromadb.HttpClient(host="localhost", port=8000)
+    chroma_client = chromadb.HttpClient(host="localhost", port=CHROMA_PORT)
     unload_index(collection_name, chroma_client)
 
 

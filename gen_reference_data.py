@@ -2,12 +2,14 @@ import embeddings_ctrl as ec
 import os
 import ollama, chromadb, time
 from mattsollamatools import chunk_text_by_sentences
-from model_tools import split_into_parts, split_into_paragraphs, split_into_paragraphs2
+# from model_tools import split_into_parts, split_into_paragraphs, split_into_paragraphs2
 import config
 from os import listdir
 from os.path import isfile, join
+from navec_embedding_function import NavecEmbeddingFunction
 import argparse
 
+CHROMA_PORT = 8010
 
 def chunk_text_by_tags(source_text, tag_of_begin: str,
                        tag_of_end: str = '',
@@ -19,16 +21,22 @@ def chunk_text_by_tags(source_text, tag_of_begin: str,
 
 
 def build_collection() -> int:
-    chroma = chromadb.HttpClient(host="localhost", port=8000)
-    print(chroma.list_collections())
+    chroma_client = chromadb.HttpClient(host="localhost", port=CHROMA_PORT)
+    print(chroma_client.list_collections())
     if any(
         collection.name == COLLECTION_NAME
-        for collection in chroma.list_collections()
+        for collection in chroma_client.list_collections()
     ):
         print("deleting collection")
-        chroma.delete_collection(COLLECTION_NAME)
+        chroma_client.delete_collection(COLLECTION_NAME)
+    """    
     collection = chroma.get_or_create_collection(
         name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+    )
+    """
+    collection = chroma_client.get_or_create_collection(
+    name="metals_gosts",
+    embedding_function=NavecEmbeddingFunction()
     )
 
     print(f'{EMBED_MODEL} embeddings selected.')
@@ -82,10 +90,11 @@ def build_collection() -> int:
 
             collection.add(
                 [filename + str(index)],
-                [embed],
+                # [embed],
                 documents=[chunk],
                 metadatas={"source": filename},
                 )
+
     return chunks_counter
 
 
