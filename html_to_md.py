@@ -6,8 +6,7 @@ from os import listdir
 from os.path import isfile, join
 import config
 import argparse
-from collections import defaultdict
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup
 import re
 from pathlib import Path
 from lxml_html_clean import Cleaner
@@ -29,6 +28,10 @@ DOCUMENT = 'document'
 PAGE_SEPARATOR = '<------------------page_separator-------------------->'
 SENTENCE_SEPARATOR = '. ' 
 STAB = 'blabla'
+
+
+models_cfg = config.Config('models.cfg')
+BEGIN_TAG = models_cfg['begin_tag']
 
 def replace_drop_words_by_stab(txt: str, drop_words_list: list[str], stab: str = STAB) -> str:
     for word in drop_words_list:
@@ -227,6 +230,7 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
         
         for i, buf in enumerate(clean_bag):
             buf = (
+                   f'{BEGIN_TAG}\n'
                    f'<{CHUNK_NUMBER} {i+1}>\n'
                    f'<{CHUNK_SRC}>\n{document_name}'
                    f'\n</{CHUNK_SRC}>'

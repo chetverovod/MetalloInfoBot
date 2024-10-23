@@ -36,13 +36,14 @@ def build_collection() -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
     # Temporary jast two files parsing.
     #files = ['1200108697.txt', '1200113779#7D20K3.txt']
-    files = ['ГОСТ 14637-89 (ИСО 4995-78).txt', 'ГОСТ 19281-2014.txt']
+    #files = ['ГОСТ 14637-89 (ИСО 4995-78).txt', 'ГОСТ 19281-2014.txt']
+    # files = ['ГОСТ 14637-89 (ИСО 4995-78).md', 'ГОСТ 19281-2014.md']
     # https://docs.cntd.ru/document/1200113779
     # https://docs.cntd.ru/document/1200000119
     text = ''
     chunks_counter = 0
     for path in files:
-        if not path.endswith(".txt"):
+        if not path.endswith(".md"):
             continue
         relative_path = REF_DOCS_PATH + '/' + path
         filename = os.path.abspath(relative_path)
@@ -68,9 +69,9 @@ def build_collection() -> int:
             chunks.remove(chunks[-1])  # remove empty []     
         
         chunks_counter += len(chunks)
-
         for index, chunk in enumerate(chunks):
             if EMBED_MODEL == "navec":
+                #print(index, chunk)
                 embed = ec.navec_embeddings(chunk)["embedding"]
             else:
                 embed = ollama.embeddings(model=EMBED_MODEL, prompt=chunk)[
