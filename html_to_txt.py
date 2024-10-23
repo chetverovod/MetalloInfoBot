@@ -156,8 +156,8 @@ def extract_table(table):
             headers = [el.text.strip() for el in row.find_all('th')]
         else:
             rows.append([el.text.strip() for el in row.find_all('td')])    
-    print('|', "|".join(headers), "|")
-    res = f'| {postfix.join(headers)} |\n'
+    #print('|', "|".join(headers), "|")
+    res = f'{res}\n| {postfix.join(headers)} |\n'
     k = 0
     max = -1
     for row in rows:
@@ -169,13 +169,13 @@ def extract_table(table):
             for _ in range(m):
                 rows[i].append(' ')
     for row in rows:
-        print("|", "|".join(row), "|")
-        res = f'| {postfix.join(row)} |\n'
+        #print("|", "|".join(row), "|")
+        res = f'{res}| {postfix.join(row)} |\n'
         if k == 0:
             for _ in range(len(row)):
                 seporator += '|---'
             seporator = seporator + postfix
-            print(seporator)
+            # print(seporator)
             res = f'{res}{seporator}\n'
             k += 1
     return res
@@ -412,7 +412,10 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
     # Temporary jast two files parsing.
     #files = ['1200108697.html', '1200113779#7D20K3.html']
-    files = ['ГОСТ 14637-89 (ИСО 4995-78).html', 'ГОСТ 19281-2014.html']
+    files = [
+            'ГОСТ 14637-89 (ИСО 4995-78).html',
+            #'ГОСТ 19281-2014_stroyinfo.html',
+            ]
     c = 0
     for path in files:
         if path.endswith(".html"):
@@ -428,20 +431,57 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
             continue
         with open(filename, "r", encoding="utf-8") as f:
             html = f.read()
+        #print(html)    
         soup = BeautifulSoup(html, "lxml")
         tags = soup.findAll()
+        tables = []
+        c = 0
+       
         for t in tags:
             if t.name == 'table':
                 res = extract_table(t)
                 print(res)
-                print('***')
-            if t.name == 'h2':
+                tables.append(res)
+        
+        for table in soup.find_all("table"):
+            table.extract()
+
+        #print(tables)
+        exit(0)
+
+        tags = soup.findAll()
+        stop_flag = 0
+        p_count = 0
+        for t in tags:
+            if stop_flag == 1:
+                break
+            if t.name == 'title':
+                res = t.text.strip()
+                print(f'# Document: {res}\n')
+
+            if t.name == 'h1':
                 res = t.text.strip()
                 print(f'## {res}\n')
-            if t.name == 'p':
+
+            if t.name == 'h2':
                 res = t.text.strip()
-                print(f'\n{res}\n')
-                              
+                print(f'### {res}\n')
+
+            if t.name == 'h3':                  
+                res = t.text.strip()
+                print(f'### {res}\n')
+                
+            if t.name == 'p':
+                res = t.text
+                if "Пожалуйста подождите" in res:
+                    stop_flag = 1
+                else:
+                    if p_count == 0:
+                        print(f'# Document: {res}\n')
+                        p_count = 1
+                    else:
+                        print(f'\n{res}\n')
+
         continue
         if page_separator == '':
             build_single_txt_doc(filename, mode)
