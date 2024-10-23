@@ -9,7 +9,16 @@ from os.path import isfile, join
 from navec_embedding_function import NavecEmbeddingFunction
 import argparse
 
-CHROMA_PORT = 8010
+# Load settings from configuration file.
+DEFAULT_SETTINGS_FILE = 'models.cfg'
+cfg = config.Config(DEFAULT_SETTINGS_FILE)
+#EMBED_MODEL = cfg["embedmodel"]
+#MAIN_MODEL = cfg["mainmodel"]
+#USE_CHAT = cfg['use_chat']
+COLLECTION_NAME = cfg['collection_name']
+#PRINT_CONTEXT = cfg['print_context']
+CHROMA_PORT = cfg['chroma_port']
+
 
 def chunk_text_by_tags(source_text, tag_of_begin: str,
                        tag_of_end: str = '',
@@ -35,9 +44,9 @@ def build_collection() -> int:
     )
     """
     collection = chroma_client.get_or_create_collection(
-    name="metals_gosts",
-    embedding_function=NavecEmbeddingFunction()
-    )
+                                                        name=COLLECTION_NAME,
+                                                        embedding_function=NavecEmbeddingFunction()
+                                                       )
 
     print(f'{EMBED_MODEL} embeddings selected.')
 
@@ -118,6 +127,7 @@ def init(cli_args: dict):
     global SPLIT_BY_PARAGRAPHS
     SPLIT_BY_PARAGRAPHS = cfg['split_by_paragraphs']
     print(f'Collection name: {COLLECTION_NAME}')
+
 
 def parse_args():
     """CLI options parsing."""

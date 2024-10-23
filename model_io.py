@@ -191,9 +191,13 @@ def main():
     logging.info("%s", f'Embedding model: {EMBED_MODEL}')
     logging.info("%s", f'Main model: {MAIN_MODEL}')
 
-    logging.info('\nAssistant for bike Suzuki Djebel 200 service is running.\n'
+    print('\nAssistant is running.\n'
                  'Enter your question or type "q" to exit.\n')
-
+    if USE_CHAT is True:   
+        print('mode: <chat>')
+    else:
+        print('mode: <generate>')
+    
     if EMBED_MODEL == 'navec':
         logging.info('Navec embeddings selected.\nType questions in Russian.\n')
 
@@ -203,9 +207,9 @@ def main():
     while run_flag is True:
         query = input(query_tag)
         if query.capitalize() != 'Q' and query.capitalize() != 'Й':
-            context = get_rag_context(query, DEFAULT_SETTINGS_FILE)
-            modelquery = build_prompt(query, context)
-            log_rag_context(query, context)
+            rag_context = get_rag_context(query, DEFAULT_SETTINGS_FILE)
+            modelquery = build_prompt(query, rag_context)
+            log_rag_context(query, rag_context)
 
             if USE_CHAT is True:
                 response = ollama.chat(model=MAIN_MODEL, messages=[
@@ -221,6 +225,7 @@ def main():
                 stream = ollama.generate(model=MAIN_MODEL, prompt=modelquery,
                                          stream=True)
                 print(f'{answer_tag} Thinking...', end="", flush=True)
+                #print(f'\nrag_context:{rag_context}', end="", flush=True)
                 shift_back_cursor = True
                 for chunk in stream:
                     if chunk["response"]:
