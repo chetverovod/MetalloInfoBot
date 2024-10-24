@@ -4,6 +4,7 @@ import embeddings_ctrl as ec
 import ollama
 import chromadb
 from chromadb.types import SegmentScope
+from navec_embedding_function import NavecEmbeddingFunction
 import config
 import gc
 import os
@@ -60,7 +61,8 @@ def get_collection(collection_name: str = None) -> chromadb.Collection:
     """
 
     chroma = chromadb.HttpClient(host="localhost", port=CHROMA_PORT)
-    collection = chroma.get_or_create_collection(collection_name)
+    collection = chroma.get_or_create_collection(collection_name,
+                                                 embedding_function=NavecEmbeddingFunction())
     return collection
 
 
@@ -107,6 +109,7 @@ def get_rag_context(query: str, config_file: str) -> str:
     collection = get_collection(COLLECTION_NAME)
     print('config:', config_file)
     print(collection)
+    """
     if EMBED_MODEL == 'navec':
         emb = ec.navec_embeddings(query)
     else:
@@ -114,6 +117,10 @@ def get_rag_context(query: str, config_file: str) -> str:
     queryembed = emb["embedding"]
     relevant_docs = collection.query(
         query_embeddings=[queryembed], n_results=5)["documents"][0]
+    """
+    relevant_docs = collection.query(
+        query_texts=(query), n_results=5)["documents"][0]
+
     context = "\n\n".join(relevant_docs)
     # free_mem_collection(COLLECTION_NAME)
     return context
