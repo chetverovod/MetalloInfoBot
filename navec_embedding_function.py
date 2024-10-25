@@ -36,6 +36,7 @@ class NavecEmbeddingFunction(EmbeddingFunction):
     def _tokenizer(self, words: list) -> torch.tensor:
         """Токенизируем список слов с помощью модели Navec"""
         in_data = torch.tensor(words)
+        #print('words = ', words) Пустой список words приводит к падению.
         return NavecEmbedding(self.navec)(in_data)
 
     @staticmethod

@@ -1,13 +1,14 @@
 import embeddings_ctrl as ec
 import os
+import chunk_ctrl as cc
 import ollama, chromadb, time
 from mattsollamatools import chunk_text_by_sentences
-# from model_tools import split_into_parts, split_into_paragraphs, split_into_paragraphs2
 import config
 from os import listdir
 from os.path import isfile, join
 from navec_embedding_function import NavecEmbeddingFunction
 import argparse
+import ast
 
 # Load settings from configuration file.
 DEFAULT_SETTINGS_FILE = 'models.cfg'
@@ -96,12 +97,26 @@ def build_collection() -> int:
             #    ]
             print(f"{index} {chunk}")    
             print(".", end="", flush=True)
-
+            context = cc.read_tag(chunk, cc.CHUNK_QUOTE)
+            context = context.replace('_'," ")
+            context = context.replace('таблица_без_имени', 'таблица')
+            # Пустой контекст приводит к падению.
+            if len(context) < 1:
+                continue
+            
+            metas = cc.read_tag(chunk, cc.CHUNK_META)
+            if len(metas) == 0:
+                metas = None 
+            else:
+                metas = ast.literal_eval(metas)
+            print('metas =', metas)
+            
+            #ids = cc.read_tag(chunk, cc.CHUNK_IDS)
+            #print('ids = !', ids,"!")
             collection.add(
-                [filename + str(index)],
-                # [embed],
-                documents=[chunk],
-                metadatas={"source": filename},
+                ids=[filename + str(index)],
+                documents=[context],
+                metadatas=[metas]
                 )
 
     return chunks_counter
