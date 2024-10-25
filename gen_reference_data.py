@@ -87,13 +87,13 @@ def build_collection() -> int:
         
         chunks_counter += len(chunks)
         for index, chunk in enumerate(chunks):
-            if EMBED_MODEL == "navec":
+            #if EMBED_MODEL == "navec":
                 #print(index, chunk)
-                embed = ec.navec_embeddings(chunk)["embedding"]
-            else:
-                embed = ollama.embeddings(model=EMBED_MODEL, prompt=chunk)[
-                    "embedding"
-                ]
+                #embed = ec.navec_embeddings(chunk)["embedding"]
+            #else:
+            #    embed = ollama.embeddings(model=EMBED_MODEL, prompt=chunk)[
+            #        "embedding"
+            #    ]
             print(f"{index} {chunk}")    
             print(".", end="", flush=True)
 

@@ -6,10 +6,8 @@ from os import listdir
 from os.path import isfile, join
 import config
 import argparse
-from bs4 import BeautifulSoup
 import re
 from pathlib import Path
-from lxml_html_clean import Cleaner
 import ollama
 import embeddings_ctrl as ec
 
@@ -34,102 +32,56 @@ STAB = 'blabla'
 
 CHUNK_CUT = '<--------------chunk_cut>---------------->'
 CHUNK_SRC = 'chunk_src'
+TABLE = "Таблица"
+UNNAMED_TABLE = "Unnamed_table"
 CHUNK_TABLE = 'chunk_table'
 CHUNK_TABLE_NAME = 'chunk_table_name'
 CHUNK_QUOTE = 'chunk_quote'
 CHUNK_NUMBER = 'chunk_number'
+CHUNK_TAGS = 'chunk_tags'
+CHUNK_META = 'chunk_meta'
+CHUNK_IDS = 'chunk_ids'
 
 models_cfg = config.Config('models.cfg')
 BEGIN_TAG = models_cfg['begin_tag']
 MAIN_MODEL = models_cfg["mainmodel"]
 
-def replace_drop_words_by_stab(txt: str, drop_words_list: list[str], stab: str = STAB) -> str:
-    for word in drop_words_list:
-        if 'r"' in word:
-            word = word.replace('r"', '"')
-            word = word.replace('"', '')
-            # Создаем регулярное выражение для поиска
-            pattern = rf"{word}"
-            # Заменяем все вхождения
-            txt = re.sub(pattern, ' ', txt)
-        else:
-            txt = txt.replace(word, stab)
-    return txt
+
+def read_tag(text: str, tag: str) -> str:
+    t = text.split(f'</{tag}>')[0]
+    t = t.split(f'<{tag}>')[1]
+    return t
 
 
-def sanitize(dirty_html):
-    cleaner = Cleaner(page_structure=True,
-                      meta=True,
-                      embedded=True,
-                      links=True,
-                      style=True,
-                      processing_instructions=True,
-                      inline_style=True,
-                      scripts=True,
-                      javascript=True,
-                      comments=True,
-                      frames=True,
-                      forms=True,
-                      annoying_tags=True,
-                      remove_unknown_tags=True,
-                      safe_attrs_only=True,
-                      safe_attrs=frozenset(['src', 'color', 'href', 'name']),
-                      remove_tags=('a', 'label', 'ul', 'i', 'li', 'footer',
-                                   'noscript', 'span', 'font', 'div', 'svg',
-                                   'img')
-                      )
-
-    return cleaner.clean_html(dirty_html)
+def wrap_by_tag(text: str, tag: str) -> str:
+    t = f'<{tag}>\n{text}\n</{tag}>\n'
+    return t
 
 
-def extract_table(table):
-    postfix = '|'
-    seporator = ''
-    headers = []
-    rows = []
-    res = '' 
-    for i, row in enumerate(table.find_all('tr')):
-        if i == 0:
-            headers = [el.text.strip() for el in row.find_all('th')]
-        else:
-            rows.append([el.text.strip() for el in row.find_all('td')])    
-    res = f'{res}\n| {postfix.join(headers)} |\n'
-    k = 0
-    max = -1
-    for row in rows:
-        if len(row) > max:
-            max = len(row)
-    for i, row in enumerate(rows):
-        if len(row) < max:
-            m = max - len(row)
-            for _ in range(m):
-                rows[i].append(' ')
-    for row in rows:
-        res = f'{res}| {postfix.join(row)} |\n'
-        if k == 0:
-            for _ in range(len(row)):
-                seporator += '|---'
-            seporator = seporator + postfix
-            res = f'{res}{seporator}\n'
-            k += 1
-    return res
+def add_tag(text: str, tag: str, tag_body) -> str:
+    w = wrap_by_tag(tag_body, tag)
+    t = f'{text}\n{w}'
+    return t
 
 
-def print_tables(tables):
-    c = 1
-    for t in tables:   
-        print(f'## Table_{c}')
-        c += 1
-        print(t)
+def read_gost_number_year(doc_name):
+    value = doc_name.split('ГОСТ')
+    digits = value[1].split(' ')
+    parts = digits[1].split('-')
+    number = parts[0]
+    year = parts[1]
+    return number, year
+
+
+def read_table_number(table_name):
+    value = table_name.split(TABLE)
+    digits = value[1].split(' ')
+    number = digits[1]
+    return number
+
 
 def build_txt(mode: str = '', page_separator: str = '') -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
-    # Temporary jast two files parsing.
-    # files = ['1200108697.html', '1200113779#7D20K3.html']
-    # files = [
-    #        'ГОСТ 14637-89 (ИСО 4995-78).html',
-    #'ГОСТ 19281-2014_stroyinfo.html',
-    #        ]
     c = 0
     for path in files:
         if path.endswith(".md"):
@@ -140,28 +92,21 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
         filename = os.path.abspath(relative_path)
         extentions = filename.split(".")
 
-        # Игнорируем не html-файлы.
+        # Игнорируем не md-файлы.
         if extentions[-1] != "md":
             continue
         if "_chunked" in filename:
             continue
         with open(filename, "r", encoding="utf-8") as f:
             md = f.read()
-        # print(html)
         splitted_md = md.split('\n\n')
-        #for el in splitted_md:
-            #print(el)
-            #print(CHUNK_CUT)
-
-        #exit(0)
-        TABLE = "Таблица"
-        tbs = md.split(TABLE)
-        tables_count = len(tbs)
 
         # Первая строчка документа должна содержать его название.
         document_name = splitted_md[0]
+        gost_num, gost_year = read_gost_number_year(document_name)
 
-        table_name = "Undefined table name"   
+        table_name = UNNAMED_TABLE
+        table_number = "undefined"
         bag = []
         for t in splitted_md:
             buf = ''
@@ -171,32 +116,42 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
             res = re.sub(pattern, ' ', res)
             pattern = r'\| --- \|'
             res = re.sub(pattern, '|---|', res)
-           
+            pattern = r'\|\|'
+            res = re.sub(pattern, '| |', res)
 
+            chunk_type = 'paragraph'  
             if '|---|' in res:
-                #for i in range(tables_count):
-                    #if f'{TABLE} {i+1}' in res:
-                buf = f'{buf}\n<{CHUNK_TABLE}>'
-                buf = f'{buf}\n<{CHUNK_TABLE_NAME}>'
-                buf = f'{buf}\n{table_name}'
-                buf = f'{buf}\n</{CHUNK_TABLE_NAME}>'
-                buf = f'{buf}\n{res}'
+                chunk_type = 'table_body'  
+                t = wrap_by_tag(table_name, CHUNK_TABLE_NAME)
+                t = f'{t}\n{res}'
                 # Двойной перенос необходим чтобы тэг
                 # не оказался внутри таблицы.
-                buf = f'{buf}\n\n</{CHUNK_TABLE}>\n'
+                t = wrap_by_tag(f'{t}\n', CHUNK_TABLE)
+                buf = f'{buf}\n{t}'
+                metas = {'gost_num': gost_num, 'gost_year': gost_year,
+                         'type': chunk_type, 'table_number': table_number}
+                ids = f'table_{table_number}_body'
             else:
                 t_pos = res.find(TABLE)
                 if t_pos == 0:
                     table_name = res
+                    table_number = read_table_number(table_name)
                 else:
-                    table_name = "Undefined table name"   
+                    table_name = UNNAMED_TABLE
+                    table_number = "undefined"
                     buf = f'{buf}\n{res}\n'
+                metas = {'gost_num': gost_num, 'gost_year': gost_year,
+                         'type': chunk_type}
+                ids = ''
+            buf = add_tag(buf, CHUNK_META, f'{metas}')
+            if len(ids) > 0:
+                buf = add_tag(buf, CHUNK_IDS, f'{ids}')
             bag.append(buf)
-
         bulk = "\n".join(bag)
         print(bulk)
+
         chunks = bulk.split(CHUNK_CUT)
-        clean_bag = []    
+        clean_bag = []
         for i, chunk in enumerate(chunks):
             if len(chunk) < 3 * 80:
                 ind = i + 1
@@ -217,16 +172,15 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
         table_descriptions = []
         for i, buf in enumerate(clean_bag):
             if CHUNK_TABLE in buf:
-                tn = buf.split(f'</{CHUNK_TABLE_NAME}>')[0]
-                tn = tn.split(f'<{CHUNK_TABLE_NAME}>')[1]
+                tn = read_tag(buf, CHUNK_TABLE_NAME)
                 query = "This text contains table in markdown format." \
                         " Describe this table textually." \
                         f'Use Russian language. Table\n {buf}'
                          
-                stream = ollama.generate(model=MAIN_MODEL, prompt=query,
+                answer = ollama.generate(model=MAIN_MODEL, prompt=query,
                                            stream=False)
-                res = stream['response']
-                print('stream')
+                res = answer['response']
+                print('answer')
                 desc = (
                         f'{BEGIN_TAG}\n'
                         f'<description_of_{CHUNK_NUMBER} {i+1}>\n'
@@ -249,10 +203,28 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
                    f'\n{buf}'
                    f'\n</{CHUNK_QUOTE}>\n')
             clean_bag[i] = buf
-
         clean_bag.extend(table_descriptions)
 
-        md_filename = filename.replace(".md", "_chuncked.md")
+        for i, chunk in enumerate(clean_bag):
+            buf = read_tag(chunk, CHUNK_QUOTE)            
+            query = "This text is formatted in markdown format." \
+                    " Describe this text by three or four tags." \
+                    " If text contains a table include the table name to list of tags." \
+                    " Your answer should contain only tags separated by comma." \
+                    f" Use Russian language. Text:\n {buf}"
+                         
+            answer = ollama.generate(model=MAIN_MODEL, prompt=query,
+                                     stream=False)
+            res = answer['response']
+            buf = (
+                   f'{buf}'
+                   f'\n<{CHUNK_TAGS}>'
+                   f'\n{res}'
+                   f'\n</{CHUNK_TAGS}>\n')
+            print(buf)
+            clean_bag[i] = buf
+                  
+        md_filename = filename.replace(".md", "_chunked.md")
         with open(md_filename, "w", encoding="utf-8") as f:
             print(f'Write: {md_filename}')
             f.write("\n".join(clean_bag))
