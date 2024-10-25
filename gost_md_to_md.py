@@ -10,6 +10,8 @@ from bs4 import BeautifulSoup
 import re
 from pathlib import Path
 from lxml_html_clean import Cleaner
+import ollama
+import embeddings_ctrl as ec
 
 # Load settings from configuration file.
 cfg = config.Config('html_to_md.cfg')
@@ -30,9 +32,16 @@ PAGE_SEPARATOR = '<------------------page_separator-------------------->'
 SENTENCE_SEPARATOR = '. ' 
 STAB = 'blabla'
 
+CHUNK_CUT = '<--------------chunk_cut>---------------->'
+CHUNK_SRC = 'chunk_src'
+CHUNK_TABLE = 'chunk_table'
+CHUNK_TABLE_NAME = 'chunk_table_name'
+CHUNK_QUOTE = 'chunk_quote'
+CHUNK_NUMBER = 'chunk_number'
 
 models_cfg = config.Config('models.cfg')
 BEGIN_TAG = models_cfg['begin_tag']
+MAIN_MODEL = models_cfg["mainmodel"]
 
 def replace_drop_words_by_stab(txt: str, drop_words_list: list[str], stab: str = STAB) -> str:
     for word in drop_words_list:
@@ -116,10 +125,10 @@ def print_tables(tables):
 def build_txt(mode: str = '', page_separator: str = '') -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
     # Temporary jast two files parsing.
-    #files = ['1200108697.html', '1200113779#7D20K3.html']
-    #files = [
+    # files = ['1200108697.html', '1200113779#7D20K3.html']
+    # files = [
     #        'ГОСТ 14637-89 (ИСО 4995-78).html',
-            #'ГОСТ 19281-2014_stroyinfo.html',
+    #'ГОСТ 19281-2014_stroyinfo.html',
     #        ]
     c = 0
     for path in files:
@@ -134,108 +143,119 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
         # Игнорируем не html-файлы.
         if extentions[-1] != "md":
             continue
+        if "_chunked" in filename:
+            continue
         with open(filename, "r", encoding="utf-8") as f:
             md = f.read()
-        #print(html)    
-        split_md = md.split('\n\n')
-        for el in split_md:
-            print(el)
-            print('>>>>')
-        
-    exit(0)
-    
-    stop_flag = 0
-    p_count = 0
-    document_name = 'not_defined'
-    CHUNK_CUT = '<--------------chunk_cut>---------------->'
-    CHUNK_SRC = 'chunk_src'
-    CHUNK_TABLE = 'chunk_table'
-    CHUNK_QUOTE = 'chunk_quote'
-    CHUNK_NUMBER = 'chunk_number'
-    bag = []
-    for t in split_md:
-        buf =''
+        # print(html)
+        splitted_md = md.split('\n\n')
+        #for el in splitted_md:
+            #print(el)
+            #print(CHUNK_CUT)
 
-        if stop_flag == 1:
-            break
-        if t.name == 'title':
-            res = t.text.strip()
-            document_name = res
+        #exit(0)
+        TABLE = "Таблица"
+        tbs = md.split(TABLE)
+        tables_count = len(tbs)
 
-        if t.name == 'h1':
-            res = t.text.strip()
+        # Первая строчка документа должна содержать его название.
+        document_name = splitted_md[0]
+
+        table_name = "Undefined table name"   
+        bag = []
+        for t in splitted_md:
+            buf = ''
             buf = f'{buf}\n{CHUNK_CUT}'
-            buf = f'{buf}\n## {res}\n'
+            res = t.strip()
+            pattern = r'\x20{2,}'
+            res = re.sub(pattern, ' ', res)
+            pattern = r'\| --- \|'
+            res = re.sub(pattern, '|---|', res)
+           
 
-        if t.name == 'h2':
-            res = t.text.strip()
-            buf = f'{buf}\n{CHUNK_CUT}'
-            buf = f'{buf}\n### {res}\n'
-
-        if t.name == 'h3':
-            res = t.text.strip()
-            buf = f'{buf}\n{CHUNK_CUT}'
-            buf = f'{buf}\n### {res}\n'
-
-        if t.name == 'p':
-            res = t.text.strip()
-            if "Таблица" in res:
-                for i, tbl in enumerate(tables):
-                    if f'Таблица {i+1}' in res:
-                        buf = f'{buf}\n{CHUNK_CUT}'
-                        buf = f'{buf}\n<{CHUNK_TABLE}>'
-                        buf = f'{buf}\n{res}'
-                        buf = f'{buf}\n{tbl}'
-                        # Двойной перенос необходим чтобы тэг
-                        # не оказался внутри таблицы.
-                        buf = f'{buf}\n\n</{CHUNK_TABLE}>\n'
-            elif "Пожалуйста подождите" in res:
-                stop_flag = 1
+            if '|---|' in res:
+                #for i in range(tables_count):
+                    #if f'{TABLE} {i+1}' in res:
+                buf = f'{buf}\n<{CHUNK_TABLE}>'
+                buf = f'{buf}\n<{CHUNK_TABLE_NAME}>'
+                buf = f'{buf}\n{table_name}'
+                buf = f'{buf}\n</{CHUNK_TABLE_NAME}>'
+                buf = f'{buf}\n{res}'
+                # Двойной перенос необходим чтобы тэг
+                # не оказался внутри таблицы.
+                buf = f'{buf}\n\n</{CHUNK_TABLE}>\n'
             else:
-                if p_count == 0:
-                    document_name = res
-                    p_count = 1
+                t_pos = res.find(TABLE)
+                if t_pos == 0:
+                    table_name = res
                 else:
-                    if len(res) > 0:
-                        buf = f'{buf}{CHUNK_CUT}\n'
-                        buf = f'{buf}\n{res}'
-        bag.append(buf)
+                    table_name = "Undefined table name"   
+                    buf = f'{buf}\n{res}\n'
+            bag.append(buf)
 
-    bulk = "\n".join(bag)
-    chunks = bulk.split(CHUNK_CUT)
-    clean_bag = []    
-    for i, chunk in enumerate(chunks):
-        if len(chunk) < 3 * 80:
-            ind = i + 1
-            if ind < len(chunks):
-                if CHUNK_TABLE in chunks[i + 1]:
-                    if CHUNK_TABLE not in chunks[i - 1]:
-                        chunks[i - 1] = f'{chunks[i - 1]}\n{chunk}'
+        bulk = "\n".join(bag)
+        print(bulk)
+        chunks = bulk.split(CHUNK_CUT)
+        clean_bag = []    
+        for i, chunk in enumerate(chunks):
+            if len(chunk) < 3 * 80:
+                ind = i + 1
+                if ind < len(chunks):
+                    if CHUNK_TABLE in chunks[i + 1]:
+                        if CHUNK_TABLE not in chunks[i - 1]:
+                            chunks[i - 1] = f'{chunks[i - 1]}\n{chunk}'
+                            chunks[i] = ''
+                    else:
+                        chunks[i + 1] = f'{chunk}\n{chunks[i + 1]}'
                         chunks[i] = ''
-                else:
-                    chunks[i + 1] = f'{chunk}\n{chunks[i + 1]}'
-                    chunks[i] = ''
-            
-    for i, chunk in enumerate(chunks):
-        s = chunk.strip()
-        if len(s) > 0:
-            s = s.replace('\n\n', '\n')
-            clean_bag.append(s)
-    
-    for i, buf in enumerate(clean_bag):
-        buf = (
-               f'{BEGIN_TAG}\n'
-               f'<{CHUNK_NUMBER} {i+1}>\n'
-               f'<{CHUNK_SRC}>\n{document_name}'
-               f'\n</{CHUNK_SRC}>'
-               f'\n<{CHUNK_QUOTE}>'
-               f'\n{buf}'
-               f'\n</{CHUNK_QUOTE}>\n')
-        clean_bag[i] = buf
-    md_filename = filename.replace(".html", ".md")
-    with open(md_filename, "w", encoding="utf-8") as f:
-        print(f'Write: {md_filename}')
-        f.write("\n".join(clean_bag))
+
+        for i, chunk in enumerate(chunks):
+            s = chunk.strip()
+            if len(s) > 0:
+                s = s.replace('\n\n', '\n')
+                clean_bag.append(s)
+        table_descriptions = []
+        for i, buf in enumerate(clean_bag):
+            if CHUNK_TABLE in buf:
+                tn = buf.split(f'</{CHUNK_TABLE_NAME}>')[0]
+                tn = tn.split(f'<{CHUNK_TABLE_NAME}>')[1]
+                query = "This text contains table in markdown format." \
+                        " Describe this table textually." \
+                        f'Use Russian language. Table\n {buf}'
+                         
+                stream = ollama.generate(model=MAIN_MODEL, prompt=query,
+                                           stream=False)
+                res = stream['response']
+                print('stream')
+                desc = (
+                        f'{BEGIN_TAG}\n'
+                        f'<description_of_{CHUNK_NUMBER} {i+1}>\n'
+                        f'<{CHUNK_SRC}>\n{document_name}'
+                        f'\n</{CHUNK_SRC}>'
+                        f'\n<{CHUNK_QUOTE}>'
+                        f'\n{tn}'
+                        f'\n{res}'
+                        f'\n</{CHUNK_QUOTE}>\n')
+                table_descriptions.append(desc)
+                print(desc)
+
+        for i, buf in enumerate(clean_bag):
+            buf = (
+                   f'{BEGIN_TAG}\n'
+                   f'<{CHUNK_NUMBER} {i+1}>\n'
+                   f'<{CHUNK_SRC}>\n{document_name}'
+                   f'\n</{CHUNK_SRC}>'
+                   f'\n<{CHUNK_QUOTE}>'
+                   f'\n{buf}'
+                   f'\n</{CHUNK_QUOTE}>\n')
+            clean_bag[i] = buf
+
+        clean_bag.extend(table_descriptions)
+
+        md_filename = filename.replace(".md", "_chuncked.md")
+        with open(md_filename, "w", encoding="utf-8") as f:
+            print(f'Write: {md_filename}')
+            f.write("\n".join(clean_bag))
 
 
 if __name__ == "__main__":
