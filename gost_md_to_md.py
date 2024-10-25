@@ -13,7 +13,8 @@ from lxml_html_clean import Cleaner
 
 # Load settings from configuration file.
 cfg = config.Config('html_to_md.cfg')
-REF_DOCS_PATH = cfg['reference_docs_path']
+p = cfg['reference_docs_path'].split('/')
+REF_DOCS_PATH = f'{p[0]}/{p[1]}'
 TITLE_TAG = cfg['title_tag']
 SOURCE_TAG = cfg['source_tag']
 QUOTE_TAG = cfg['quote_tag']
@@ -122,9 +123,9 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
     #        ]
     c = 0
     for path in files:
-        if path.endswith(".html"):
+        if path.endswith(".md"):
             c += 1
-    print(f"{c} html files found.")
+    print(f"{c} gost md files found.")
     for path in files:
         relative_path = REF_DOCS_PATH + '/' + path
         filename = os.path.abspath(relative_path)
