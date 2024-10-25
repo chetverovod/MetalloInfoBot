@@ -132,117 +132,110 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
         extentions = filename.split(".")
 
         # Игнорируем не html-файлы.
-        if extentions[-1] != "html":
+        if extentions[-1] != "md":
             continue
         with open(filename, "r", encoding="utf-8") as f:
-            html = f.read()
+            md = f.read()
         #print(html)    
-        soup = BeautifulSoup(html, "lxml")
-        tags = soup.findAll()
-        tables = []
-        c = 0
-
-        for t in tags:
-            if t.name == 'table':
-                res = extract_table(t)
-                tables.append(res)
+        split_md = md.split('\n\n')
+        for el in split_md:
+            print(el)
+            print('>>>>')
         
-        for table in soup.find_all("table"):
-            table.extract()
+    exit(0)
+    
+    stop_flag = 0
+    p_count = 0
+    document_name = 'not_defined'
+    CHUNK_CUT = '<--------------chunk_cut>---------------->'
+    CHUNK_SRC = 'chunk_src'
+    CHUNK_TABLE = 'chunk_table'
+    CHUNK_QUOTE = 'chunk_quote'
+    CHUNK_NUMBER = 'chunk_number'
+    bag = []
+    for t in split_md:
+        buf =''
 
-        tags = soup.findAll()
-        stop_flag = 0
-        p_count = 0
-        document_name = 'not_defined'
-        CHUNK_CUT = '<--------------chunk_cut>---------------->'
-        CHUNK_SRC = 'chunk_src'
-        CHUNK_TABLE = 'chunk_table'
-        CHUNK_QUOTE = 'chunk_quote'
-        CHUNK_NUMBER = 'chunk_number'
-        bag = []
-        for t in tags:
-            buf =''
+        if stop_flag == 1:
+            break
+        if t.name == 'title':
+            res = t.text.strip()
+            document_name = res
 
-            if stop_flag == 1:
-                break
-            if t.name == 'title':
-                res = t.text.strip()
-                document_name = res
+        if t.name == 'h1':
+            res = t.text.strip()
+            buf = f'{buf}\n{CHUNK_CUT}'
+            buf = f'{buf}\n## {res}\n'
 
-            if t.name == 'h1':
-                res = t.text.strip()
-                buf = f'{buf}\n{CHUNK_CUT}'
-                buf = f'{buf}\n## {res}\n'
+        if t.name == 'h2':
+            res = t.text.strip()
+            buf = f'{buf}\n{CHUNK_CUT}'
+            buf = f'{buf}\n### {res}\n'
 
-            if t.name == 'h2':
-                res = t.text.strip()
-                buf = f'{buf}\n{CHUNK_CUT}'
-                buf = f'{buf}\n### {res}\n'
+        if t.name == 'h3':
+            res = t.text.strip()
+            buf = f'{buf}\n{CHUNK_CUT}'
+            buf = f'{buf}\n### {res}\n'
 
-            if t.name == 'h3':
-                res = t.text.strip()
-                buf = f'{buf}\n{CHUNK_CUT}'
-                buf = f'{buf}\n### {res}\n'
-
-            if t.name == 'p':
-                res = t.text.strip()
-                if "Таблица" in res:
-                    for i, tbl in enumerate(tables):
-                        if f'Таблица {i+1}' in res:
-                            buf = f'{buf}\n{CHUNK_CUT}'
-                            buf = f'{buf}\n<{CHUNK_TABLE}>'
-                            buf = f'{buf}\n{res}'
-                            buf = f'{buf}\n{tbl}'
-                            # Двойной перенос необходим чтобы тэг
-                            # не оказался внутри таблицы.
-                            buf = f'{buf}\n\n</{CHUNK_TABLE}>\n'
-                elif "Пожалуйста подождите" in res:
-                    stop_flag = 1
+        if t.name == 'p':
+            res = t.text.strip()
+            if "Таблица" in res:
+                for i, tbl in enumerate(tables):
+                    if f'Таблица {i+1}' in res:
+                        buf = f'{buf}\n{CHUNK_CUT}'
+                        buf = f'{buf}\n<{CHUNK_TABLE}>'
+                        buf = f'{buf}\n{res}'
+                        buf = f'{buf}\n{tbl}'
+                        # Двойной перенос необходим чтобы тэг
+                        # не оказался внутри таблицы.
+                        buf = f'{buf}\n\n</{CHUNK_TABLE}>\n'
+            elif "Пожалуйста подождите" in res:
+                stop_flag = 1
+            else:
+                if p_count == 0:
+                    document_name = res
+                    p_count = 1
                 else:
-                    if p_count == 0:
-                        document_name = res
-                        p_count = 1
-                    else:
-                        if len(res) > 0:
-                            buf = f'{buf}{CHUNK_CUT}\n'
-                            buf = f'{buf}\n{res}'
-            bag.append(buf)
+                    if len(res) > 0:
+                        buf = f'{buf}{CHUNK_CUT}\n'
+                        buf = f'{buf}\n{res}'
+        bag.append(buf)
 
-        bulk = "\n".join(bag)
-        chunks = bulk.split(CHUNK_CUT)
-        clean_bag = []    
-        for i, chunk in enumerate(chunks):
-            if len(chunk) < 3 * 80:
-                ind = i + 1
-                if ind < len(chunks):
-                    if CHUNK_TABLE in chunks[i + 1]:
-                        if CHUNK_TABLE not in chunks[i - 1]:
-                            chunks[i - 1] = f'{chunks[i - 1]}\n{chunk}'
-                            chunks[i] = ''
-                    else:
-                        chunks[i + 1] = f'{chunk}\n{chunks[i + 1]}'
+    bulk = "\n".join(bag)
+    chunks = bulk.split(CHUNK_CUT)
+    clean_bag = []    
+    for i, chunk in enumerate(chunks):
+        if len(chunk) < 3 * 80:
+            ind = i + 1
+            if ind < len(chunks):
+                if CHUNK_TABLE in chunks[i + 1]:
+                    if CHUNK_TABLE not in chunks[i - 1]:
+                        chunks[i - 1] = f'{chunks[i - 1]}\n{chunk}'
                         chunks[i] = ''
-                
-        for i, chunk in enumerate(chunks):
-            s = chunk.strip()
-            if len(s) > 0:
-                s = s.replace('\n\n', '\n')
-                clean_bag.append(s)
-        
-        for i, buf in enumerate(clean_bag):
-            buf = (
-                   f'{BEGIN_TAG}\n'
-                   f'<{CHUNK_NUMBER} {i+1}>\n'
-                   f'<{CHUNK_SRC}>\n{document_name}'
-                   f'\n</{CHUNK_SRC}>'
-                   f'\n<{CHUNK_QUOTE}>'
-                   f'\n{buf}'
-                   f'\n</{CHUNK_QUOTE}>\n')
-            clean_bag[i] = buf
-        md_filename = filename.replace(".html", ".md")
-        with open(md_filename, "w", encoding="utf-8") as f:
-            print(f'Write: {md_filename}')
-            f.write("\n".join(clean_bag))
+                else:
+                    chunks[i + 1] = f'{chunk}\n{chunks[i + 1]}'
+                    chunks[i] = ''
+            
+    for i, chunk in enumerate(chunks):
+        s = chunk.strip()
+        if len(s) > 0:
+            s = s.replace('\n\n', '\n')
+            clean_bag.append(s)
+    
+    for i, buf in enumerate(clean_bag):
+        buf = (
+               f'{BEGIN_TAG}\n'
+               f'<{CHUNK_NUMBER} {i+1}>\n'
+               f'<{CHUNK_SRC}>\n{document_name}'
+               f'\n</{CHUNK_SRC}>'
+               f'\n<{CHUNK_QUOTE}>'
+               f'\n{buf}'
+               f'\n</{CHUNK_QUOTE}>\n')
+        clean_bag[i] = buf
+    md_filename = filename.replace(".html", ".md")
+    with open(md_filename, "w", encoding="utf-8") as f:
+        print(f'Write: {md_filename}')
+        f.write("\n".join(clean_bag))
 
 
 if __name__ == "__main__":
