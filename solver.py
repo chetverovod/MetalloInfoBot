@@ -161,6 +161,11 @@ if 'да' in steel_mark_in_gost.lower():
 else:
     qwe['solidity_in_gost'] = False
 
+# Получаем категорию проката
+prompt = f'Какая категория проката упомянута в тексте: "{query_1}"' \
+          '  Ответь одним словом.'
+qwe['category'] = ai(prompt, show=True)
+
 
 print(qwe)
 exit(0)
