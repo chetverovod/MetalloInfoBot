@@ -31,7 +31,7 @@ book.append(system_msg)
 models_config_file = 'models.cfg'
 
 
-def rag(context, gost_num: str = "", gost_year: str = "", show=False):
+def rag(context, meta_key: str = "", meta_value: str = "", show=False):
     collection = mio.get_collection('metalloprokat')
     n_res = 5
     sz = 0
@@ -40,7 +40,7 @@ def rag(context, gost_num: str = "", gost_year: str = "", show=False):
         sz = 0
         relevant_docs = collection.query(query_texts=(context),
                                          n_results=n_res,
-                                         where={"gost_num": gost_num})
+                                         where={ meta_key: meta_value})
         rag_context = relevant_docs["documents"][0]
 
         for c in rag_context:
@@ -61,6 +61,7 @@ def ai(prompt_txt: str, show=False) -> str:
     res = stream["response"].removesuffix('.')
     print(colored(f'>>> {res}\n', 'yellow'))
     return res
+
 
 def clean_up_tables_list(tables_string: str) -> list[str]:
     tables_string = tables_string.replace('[', '')
@@ -87,6 +88,8 @@ print(colored("Разбор запроса", "red"))
 
 qwe = {}
 
+
+
 # Получаем тип проката
 prompt = f"Какой тип проката упомянут в тексте: {query_1} Ответь двумя словами."
 qwe['prokat_type'] = ai(prompt)
@@ -102,6 +105,9 @@ qwe['gost_num'] = gost.split('-')[0]
 print('GOST Num:', qwe['gost_num'])
 qwe['gost_year'] = gost.split('-')[1]
 print('GOST Year:', qwe['gost_year'])
+
+docs = rag(f'исполнение, исполнения', 'gost_num', gost_num, show=True)
+exit(0)
 
 # Получаем исполнение проката
 prompt = f'Какое исполнение упомянуто в тексте: "{query_1}"' \
