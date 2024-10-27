@@ -31,7 +31,7 @@ SENTENCE_SEPARATOR = '. '
 STAB = 'blabla'
 
 
-def build_txt(mode: str = '', page_separator: str = '') -> int:
+def build_txt(make_tables_description: bool = False, make_tags: bool = False) -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
     c = 0
     for path in files:
@@ -56,7 +56,7 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
         document_name = splitted_md[0]
         gost_num, gost_year = cc.read_gost_number_year(document_name)
 
-        table_name = cc.UNNAMED_TABLE
+        table_name = cc.UNNUMBERED_TABLE
         table_number = "undefined"
         bag = []
         for t in splitted_md:
@@ -65,12 +65,13 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
             res = t.strip()
             pattern = r'\x20{2,}'
             res = re.sub(pattern, ' ', res)
-            pattern = r'\| --- \|'
-            res = re.sub(pattern, '|---|', res)
+            pattern = r'\| ---'
+            res = re.sub(pattern, '|---', res)
+            pattern = r'--- \|'
+            res = re.sub(pattern, '---|', res)
             pattern = r'\|\|'
             res = re.sub(pattern, '| |', res)
 
-            chunk_type = 'paragraph'
             if '|---|' in res:
                 chunk_type = 'table_body'
                 t = cc.wrap_by_tag(table_name, cc.CHUNK_TABLE_NAME)
@@ -83,13 +84,14 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
                          'type': chunk_type, 'table_number': table_number}
                 ids = f'table_{table_number}_body'
             else:
+                chunk_type = 'paragraph'
                 t_pos = res.find(cc.TABLE)
                 if t_pos == 0:
                     table_name = res
                     table_number = cc.read_table_number(table_name)
                 else:
-                    table_name = cc.UNNAMED_TABLE
-                    table_number = "undefined"
+                    table_name = cc.UNNUMBERED_TABLE
+                    table_number = "без номера"
                     buf = f'{buf}\n{res}\n'
                 metas = {'gost_num': gost_num, 'gost_year': gost_year,
                          'type': chunk_type}
@@ -101,8 +103,10 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
         bulk = "\n".join(bag)
         print(bulk)
 
-        # Подклеиваем короткие чанки к их соседям.
         chunks = bulk.split(cc.CHUNK_CUT)
+        
+        # Подклеиваем короткие чанки к их соседям.
+        """
         for i, chunk in enumerate(chunks):
             if len(chunk) < 3 * 80:
                 ind = i + 1
@@ -114,7 +118,7 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
                     else:
                         chunks[i + 1] = f'{chunk}\n{cc.read_tag(chunks[i + 1], cc.CHUNK_QUOTE)}'
                         chunks[i] = ''
-
+        """
         clean_bag = []
         for i, chunk in enumerate(chunks):
             s = chunk.strip()
@@ -123,6 +127,11 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
                 clean_bag.append(s)
 
         for i, buf in enumerate(clean_bag):
+            meta = cc.read_tag(buf, cc.CHUNK_META)
+            buf = cc.remove_tag(buf, cc.CHUNK_META)
+            ids = cc.read_tag(buf, cc.CHUNK_IDS)
+            buf = cc.remove_tag(buf, cc.CHUNK_IDS)
+
             buf = (
                    f'{cc.BEGIN_TAG}\n'
                    f'<{cc.CHUNK_NUMBER} {i+1}>\n'
@@ -131,57 +140,63 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
                    f'\n<{cc.CHUNK_QUOTE}>'
                    f'\n{buf}'
                    f'\n</{cc.CHUNK_QUOTE}>\n')
+            if len(meta) > 0:
+                buf = cc.add_tag(buf, cc.CHUNK_META, meta)
+            if len(ids) > 0:
+                buf = cc.add_tag(buf, cc.CHUNK_IDS, ids)
             clean_bag[i] = buf
 
-        table_descriptions = []
-        for i, buf in enumerate(clean_bag):
-            if cc.CHUNK_TABLE in buf:
-                tn = cc.read_tag(buf, cc.CHUNK_TABLE_NAME)
-                query = "This text contains table in markdown format." \
-                        " Describe this table textually." \
-                        f'Use Russian language. Table\n {buf}'
+        if make_tables_description is True:
+            table_descriptions = []
+            for i, buf in enumerate(clean_bag):
+                if cc.CHUNK_TABLE in buf:
+                    tn = cc.read_tag(buf, cc.CHUNK_TABLE_NAME)
+                    query = "This text contains table in markdown format." \
+                            " Describe this table textually." \
+                            f'Use Russian language. Table\n {buf}'
+    
+                    answer = ollama.generate(model=cc.MAIN_MODEL, prompt=query,
+                                             stream=False)
+                    res = answer['response']
+                    print('answer')
+                    desc = (
+                            f'{cc.BEGIN_TAG}\n'
+                            f'<description_of_{cc.CHUNK_NUMBER} {i+1}>\n'
+                            f'<{cc.CHUNK_SRC}>\n{document_name}'
+                            f'\n</{cc.CHUNK_SRC}>'
+                            f'\n<{cc.CHUNK_QUOTE}>'
+                            f'\n{tn}'
+                            f'\n{res}'
+                            f'\n</{cc.CHUNK_QUOTE}>\n')
+                    table_descriptions.append(desc)
+                    print(desc)
+            clean_bag.extend(table_descriptions)
 
+        if make_tags is True:
+            # Добавляем слова-теги.
+            for i, chunk in enumerate(clean_bag):
+                buf = cc.read_tag(chunk, cc.CHUNK_QUOTE)
+                query = "This text is formatted in markdown format." \
+                        " Describe this text by three or four keywords." \
+                        " If text contains a table include the table name to list of keywords." \
+                        " Your answer should contain only keywords separated by comma." \
+                        f" Use Russian language. Text:\n {buf}"
+    
                 answer = ollama.generate(model=cc.MAIN_MODEL, prompt=query,
                                          stream=False)
                 res = answer['response']
-                print('answer')
-                desc = (
-                        f'{cc.BEGIN_TAG}\n'
-                        f'<description_of_{cc.CHUNK_NUMBER} {i+1}>\n'
-                        f'<{cc.CHUNK_SRC}>\n{document_name}'
-                        f'\n</{cc.CHUNK_SRC}>'
-                        f'\n<{cc.CHUNK_QUOTE}>'
-                        f'\n{tn}'
-                        f'\n{res}'
-                        f'\n</{cc.CHUNK_QUOTE}>\n')
-                table_descriptions.append(desc)
-                print(desc)
-        clean_bag.extend(table_descriptions)
+                res = res.replace('Теги:', '')
+                res = res.replace('Метки:', '')
+                res = res.replace('Мета-метки:', '')
+                res = res.replace('Ключевые слова:', '') 
+                chunk = (
+                       f'{chunk}'
+                       f'\n<{cc.CHUNK_TAGS}>'
+                       f'\n{res}'
+                       f'\n</{cc.CHUNK_TAGS}>\n')
+                print(chunk)
+                clean_bag[i] = chunk
 
-        # Добавляем слова-теги.
-        for i, chunk in enumerate(clean_bag):
-            buf = cc.read_tag(chunk, cc.CHUNK_QUOTE)
-            query = "This text is formatted in markdown format." \
-                    " Describe this text by three or four keywords." \
-                    " If text contains a table include the table name to list of keywords." \
-                    " Your answer should contain only keywords separated by comma." \
-                    f" Use Russian language. Text:\n {buf}"
-
-            answer = ollama.generate(model=cc.MAIN_MODEL, prompt=query,
-                                     stream=False)
-            res = answer['response']
-            res = res.replace('Теги:', '')
-            res = res.replace('Метки:', '')
-            res = res.replace('Мета-метки:', '')
-            res = res.replace('Ключевые слова:', '') 
-            chunk = (
-                   f'{chunk}'
-                   f'\n<{cc.CHUNK_TAGS}>'
-                   f'\n{res}'
-                   f'\n</{cc.CHUNK_TAGS}>\n')
-            print(chunk)
-            clean_bag[i] = chunk
- 
         md_filename = filename.replace(".md", "_chunked.md")
         with open(md_filename, "w", encoding="utf-8") as f:
             print(f'Write: {md_filename}')
@@ -189,4 +204,5 @@ def build_txt(mode: str = '', page_separator: str = '') -> int:
 
 
 if __name__ == "__main__":
-    build_txt()
+    #     build_txt() # For generate without Ai-made descriptions.
+    build_txt(make_tables_description=True, make_tags=True)

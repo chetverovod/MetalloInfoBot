@@ -30,7 +30,7 @@ def chunk_text_by_tags(source_text, tag_of_begin: str,
     return cleaned_data
 
 
-def build_collection() -> int:
+def delete_collection() -> int:
     chroma_client = chromadb.HttpClient(host="localhost", port=CHROMA_PORT)
     print(chroma_client.list_collections())
     if any(
@@ -39,13 +39,14 @@ def build_collection() -> int:
     ):
         print("deleting collection")
         chroma_client.delete_collection(COLLECTION_NAME)
-    """    
-    collection = chroma.get_or_create_collection(
-        name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
-    )
-    """
+        
+
+def build_collection() -> int:
+    delete_collection() 
+    chroma_client = chromadb.HttpClient(host="localhost", port=CHROMA_PORT)
     collection = chroma_client.get_or_create_collection(
                                                         name=COLLECTION_NAME,
+                                                        metadata={"hnsw:space": "cosine"},
                                                         embedding_function=NavecEmbeddingFunction()
                                                        )
 
@@ -95,15 +96,29 @@ def build_collection() -> int:
             #    embed = ollama.embeddings(model=EMBED_MODEL, prompt=chunk)[
             #        "embedding"
             #    ]
-            print(f"{index} {chunk}")    
-            print(".", end="", flush=True)
+            #print(f"{index} {chunk}")    
+            #print(".", end="", flush=True)
+            num = cc.read_tag(chunk, cc.CHUNK_NUMBER)
+            print(num)
             context = cc.read_tag(chunk, cc.CHUNK_QUOTE)
-            context = context.replace('_'," ")
+            print("context")
+            print(context)
+            context = context.replace('\___\___\___', ' ')
+            context = context.replace('\___\___\____', ' ')
+            context = context.replace('_', " ")
             context = context.replace('таблица_без_имени', 'таблица')
+            context = context.strip()
+
             # Пустой контекст приводит к падению.
             if len(context) < 1:
                 continue
             
+            # Пустой контекст состоит только из чисел это приводит к падению.
+            ctx = context.replace(' ', "")
+            if all(char.isdigit() or char == '.' or char == ',' for char in ctx):
+                continue
+            if "<chunk_src" in context:
+                exit(0)
             metas = cc.read_tag(chunk, cc.CHUNK_META)
             if len(metas) == 0:
                 metas = None 
@@ -111,8 +126,8 @@ def build_collection() -> int:
                 metas = ast.literal_eval(metas)
             print('metas =', metas)
             
-            #ids = cc.read_tag(chunk, cc.CHUNK_IDS)
-            #print('ids = !', ids,"!")
+            ids = cc.read_tag(chunk, cc.CHUNK_IDS)
+            print('ids = !', ids,"!")
             collection.add(
                 ids=[filename + str(index)],
                 documents=[context],
@@ -142,6 +157,10 @@ def init(cli_args: dict):
     global SPLIT_BY_PARAGRAPHS
     SPLIT_BY_PARAGRAPHS = cfg['split_by_paragraphs']
     print(f'Collection name: {COLLECTION_NAME}')
+    if cli_args.d:
+        delete_collection() 
+        exit(0)
+
 
 
 def parse_args():
@@ -151,11 +170,13 @@ def parse_args():
 
     parser = argparse.ArgumentParser(
         prog=prog_name,
-        description="Telegram bot.",
+        description="Data generator for vector base ChromaDB.",
         epilog="Text at the bottom of help",
     )
     parser.add_argument("-m", dest="models_config",
                         help="Model configuration file path.")
+    parser.add_argument("-d",  action="store_true",
+                        help="Delete dataset.")
     return parser.parse_args()
 
 

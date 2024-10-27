@@ -3,7 +3,7 @@ import config
 CHUNK_CUT = '<--------------chunk_cut>---------------->'
 CHUNK_SRC = 'chunk_src'
 TABLE = "Таблица"
-UNNAMED_TABLE = "Unnamed_table"
+UNNUMBERED_TABLE = "Таблица без номера"
 CHUNK_TABLE = 'chunk_table'
 CHUNK_TABLE_NAME = 'chunk_table_name'
 CHUNK_QUOTE = 'chunk_quote'
@@ -25,6 +25,14 @@ def read_tag(text: str, tag: str) -> str:
     else:
         t = ""
     return t
+
+
+def remove_tag(text: str, tag: str) -> str:
+    if f'<{tag}>' in text:
+        head = text.split(f'<{tag}>')[0]
+        tail = text.split(f'</{tag}>')[1]
+        return f'{head}{tail}'
+    return text
 
 
 def wrap_by_tag(text: str, tag: str) -> str:

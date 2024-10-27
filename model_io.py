@@ -157,18 +157,17 @@ def build_flat_book(user_query: str, prompt: str,
     return flat_book
 
 
-def get_answer(user_query: str, config_file: str,
+def get_answer(user_query: str, models_config_file: str,
                history_book: list[str]) -> str:
     """ Make single answer."""
 
-    query = user_query
-    rag_context = get_rag_context(query, config_file)
+    rag_context = get_rag_context(user_query, models_config_file)
     if len(rag_context) == 0:
-        log.info("RAG context is empty fo query: %s", query) 
-     
-    prompt = build_prompt(query, rag_context)
-    log_rag_context(query, rag_context)
-    flat_book = build_flat_book(query, prompt, history_book)
+        logging.info("RAG context is empty fo query: %s", user_query)
+
+    prompt = build_prompt(user_query, rag_context)
+    log_rag_context(user_query, rag_context)
+    flat_book = build_flat_book(user_query, prompt, history_book)
 
     if USE_CHAT is True:
         logging.info('<chat> mode')
