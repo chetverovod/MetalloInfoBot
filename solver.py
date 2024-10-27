@@ -277,8 +277,22 @@ qwe['prokat_option_in_tables'] = res
 # where = {"$and": [{"category": "chroma"}, {"$or": [{"author": "john"}, {"author": "jack"}]}]}
 # where_cond = {"$and": [{"category": "chroma"}, {"author": "john"}]}
 #'gost_num': '19281', 'gost_year': '2014', 'type': 'table_body', 'table_number': '1'}
-where_dict =  {"$and": [{"gost_num": "19281"},{"$or": [{"table_number": "1"}, {"table_number": "2"}]}]}
-docs = rag2(f'исполнение проката {opt} таблица', where_dict=where_dict, show=True)
+where_dict = {"$and": [{"gost_num": "19281"},{"$or": [{"table_number": "5"}, 
+              {"table_number": "6"}, {"table_number": "11"},
+              {"table_number": "12"}]}]}
+docs = rag2(f'исполнение проката {opt} таблица', where_dict=where_dict,
+            show=True)
+tables = qwe["prokat_option_in_tables"] 
+tables.extend(qwe['solidity_in_tables']) 
+tables.extend(qwe['steel_in_tables']) 
+tables.extend(qwe['type_in_tables']) 
+tables.extend(qwe['category_in_tables']) 
+prompt = f'Из текста "{docs}" Перечисли перечень испытаний' \
+         f' для {qwe["prokat_type"]} проката с исполнением' \
+         f' {qwe["prokat_option"]} из стали {qwe["steel"]}' \
+         f' класс прочности {qwe["solidity"]} категория {qwe["category"]}' \
+         f' толщина {qwe["thickness"]}?'
+res = ai(prompt, show=True)
 
 print(qwe)
 exit(0)
