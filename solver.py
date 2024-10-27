@@ -106,8 +106,6 @@ print('GOST Num:', qwe['gost_num'])
 qwe['gost_year'] = gost.split('-')[1]
 print('GOST Year:', qwe['gost_year'])
 
-docs = rag(f'исполнение, исполнения', 'gost_num', gost_num, show=True)
-exit(0)
 
 # Получаем исполнение проката
 prompt = f'Какое исполнение упомянуто в тексте: "{query_1}"' \
@@ -117,8 +115,7 @@ qwe['prokat_option'] = ai(prompt, show=True)
 print('prokat_option:', qwe['prokat_option'])
 
 # Проверяем, что в ГОСТе упоминается это исполнение проката
-docs = rag(f'исполнение, исполнения', qwe['gost_num'], qwe['gost_year'],
-           show=True)
+docs = rag('исполнение, исполнения', 'gost_num', qwe['gost_num'], show=True)
 
 opt = qwe['prokat_option']
 prompt = f'В этом тексте: {docs}, встречается исполнение "{opt}"? Ответь коротко.'
@@ -134,8 +131,7 @@ prompt = f'Какая марка стали упомянута в тексте: 
 qwe['steel'] = ai(prompt, show=True)
 
 # Проверяем, что в ГОСТе упоминается эта марка стали
-docs = rag(f'сталь', qwe['gost_num'], qwe['gost_year'],
-           show=True)
+docs = rag('сталь', 'gost_num', qwe['gost_num'], show=True)
 opt = qwe['steel']
 prompt = f'В этом тексте: "{docs}", встречается марка стали "{opt}"? Ответь коротко.'
 steel_mark_in_gost = ai(prompt, show=True)
@@ -150,8 +146,7 @@ prompt = f'Какая толщина упомянута в тексте: "{query
 qwe['thickness'] = ai(prompt, show=True)
 
 # Проверяем, что в ГОСТе упоминается эта толщина проката
-docs = rag(f'сталь', qwe['gost_num'], qwe['gost_year'],
-           show=True)
+docs = rag('толщина', 'gost_num', qwe['gost_num'], show=True)
 opt = qwe['thickness']
 prompt = f'В этом тексте: "{docs}", встречается толщина проката "{opt}"? Ответь коротко.'
 res = ai(prompt, show=True)
@@ -166,8 +161,7 @@ prompt = f'Какой класс прочности упомянут в текс
 qwe['solidity'] = ai(prompt, show=True)
 
 # Проверяем, что в ГОСТе упоминается этот класс прочности
-docs = rag(f'класс прочности', qwe['gost_num'], qwe['gost_year'],
-           show=True)
+docs = rag('класс прочности', 'gost_num', qwe['gost_num'], show=True)
 opt = qwe['solidity']
 prompt = f'В этом тексте: "{docs}", встречается класс прочности "{opt}"? Ответь коротко.'
 res = ai(prompt, show=True)
@@ -184,8 +178,7 @@ prompt = f'"Извлеки число из этого текста: "{res}"'
 qwe['category'] = ai(prompt, show=True)
 
 # Проверяем, что в ГОСТе упоминается эта категория проката
-docs = rag(f'категория', qwe['gost_num'], qwe['gost_year'],
-           show=True)
+docs = rag('категория', 'gost_num', qwe['gost_num'], show=True)
 opt = qwe['category']
 prompt = f'В этом тексте: "{docs}", встречается категория "{opt}"? Ответь коротко.'
 res = ai(prompt, show=True)
@@ -196,8 +189,7 @@ else:
 
 # Находим таблицы с нужной категорией
 opt = qwe['category']
-docs = rag(f'категория {opt} таблица', qwe['gost_num'], qwe['gost_year'],
-           show=True)
+docs = rag(f'категория {opt} таблица', 'gost_num', qwe['gost_num'], show=True)
 prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается' \
          f' категория "{opt}"? Ответь коротко.'
 res = ai(prompt, show=True)
@@ -209,8 +201,7 @@ qwe['category_in_tables'] = res
 
 # Находим таблицы с нужной сталью
 opt = qwe['steel']
-docs = rag(f'сталь {opt} таблица', qwe['gost_num'], qwe['gost_year'],
-           show=True)
+docs = rag(f'сталь {opt} таблица', 'gost_num', qwe['gost_num'], show=True)
 prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается сталь' \
           f' "{opt}"?' \
           ' Ответь коротко.'
@@ -223,8 +214,7 @@ qwe['steel_in_tables'] = res
 
 # Находим таблицы с нужным классом прочности
 opt = qwe['solidity']
-docs = rag(f'класс прочности {opt} таблица', qwe['gost_num'], qwe['gost_year'],
-           show=True)
+docs = rag(f'класс прочности {opt} таблица', 'gost_num', qwe['gost_num'], show=True)
 prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается класс прочности' \
           f' "{opt}"?' \
           ' Ответь коротко.'
@@ -237,8 +227,7 @@ qwe['solidity_in_tables'] = res
 
 # Находим таблицы с нужным типом проката
 opt = qwe['prokat_type']
-docs = rag(f'тип проката {opt} таблица', qwe['gost_num'], qwe['gost_year'],
-           show=True)
+docs = rag(f'тип проката {opt} таблица', 'gost_num', qwe['gost_num'], show=True)
 prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается тип проката' \
           f' "{opt}"?' \
           ' Ответь коротко.'
@@ -251,8 +240,7 @@ qwe['type_in_tables'] = res
 
 # Находим таблицы с нужным исполнением
 opt = qwe['prokat_option']
-docs = rag(f'исполнение проката {opt} таблица', qwe['gost_num'], qwe['gost_year'],
-           show=True)
+docs = rag(f'исполнение проката {opt} таблица', 'gost_num', qwe['gost_num'], show=True)
 prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается исполнение проката' \
           f' "{opt}"?' \
           ' Ответь коротко.'
