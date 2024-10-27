@@ -274,10 +274,10 @@ res = ai(prompt, show=True)
 res = clean_up_tables_list(res)
 qwe['prokat_option_in_tables'] = res
 
-
+# where = {"$and": [{"category": "chroma"}, {"$or": [{"author": "john"}, {"author": "jack"}]}]}
 # where_cond = {"$and": [{"category": "chroma"}, {"author": "john"}]}
 #'gost_num': '19281', 'gost_year': '2014', 'type': 'table_body', 'table_number': '1'}
-where_dict =  {"$and": [{"gost_num": "19281"}, {"table_number": "1"}]}
+where_dict =  {"$and": [{"gost_num": "19281"},{"$or": [{"table_number": "1"}, {"table_number": "2"}]}]}
 docs = rag2(f'исполнение проката {opt} таблица', where_dict=where_dict, show=True)
 
 print(qwe)
