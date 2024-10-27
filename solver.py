@@ -62,6 +62,14 @@ def ai(prompt_txt: str, show=False) -> str:
     print(colored(f'>>> {res}\n', 'yellow'))
     return res
 
+def clean_up_tables_list(tables_string: str) -> list[str]:
+    tables_string = tables_string.replace('[', '')
+    tables_string = tables_string.replace(']', '')
+    tables_string = tables_string.replace('Таблицы', '')
+    tables_string = tables_string.split(',')
+    tables_string = [s.strip() for s in tables_string]
+    return tables_string
+
 """
 Вопросы к ИИ
 1. Какой тип проката в запросе?
@@ -81,15 +89,15 @@ qwe = {}
 
 # Получаем тип проката
 prompt = f"Какой тип проката упомянут в тексте: {query_1} Ответь двумя словами."
-qwe['prokat_target'] = ai(prompt)
-print('prokat_target:', qwe['prokat_target'])
+qwe['prokat_type'] = ai(prompt)
+print('prokat_type:', qwe['prokat_type'])
 
 # Получаем название ГОСТа
 prompt = f"Изучи текст: {query_1} Какой " \
          " ГОСТ в нем упомянут? Выведи только обозначение ГОСТа."
 res = ai(prompt)
-prompt = f"Извлеки из текста обозначение ГОСТа. Вот из этого текста: {res}"
-gost = ai(prompt)
+prompt = f'Извлеки из текста обозначение ГОСТа. Вот из этого текста: {res}'
+gost = ai(prompt, show=True)
 qwe['gost_num'] = gost.split('-')[0]
 print('GOST Num:', qwe['gost_num'])
 qwe['gost_year'] = gost.split('-')[1]
@@ -105,8 +113,9 @@ print('prokat_option:', qwe['prokat_option'])
 # Проверяем, что в ГОСТе упоминается это исполнение проката
 docs = rag(f'исполнение, исполнения', qwe['gost_num'], qwe['gost_year'],
            show=True)
+
 opt = qwe['prokat_option']
-prompt = f'В этом тексте: "{docs}", встречается исполнение "{opt}"? Ответь коротко.'
+prompt = f'В этом тексте: {docs}, встречается исполнение "{opt}"? Ответь коротко.'
 prokat_option_in_gost = ai(prompt, show=True)
 if 'да' in  prokat_option_in_gost.lower():
     qwe['option_in_gost'] = True
@@ -139,8 +148,8 @@ docs = rag(f'сталь', qwe['gost_num'], qwe['gost_year'],
            show=True)
 opt = qwe['thickness']
 prompt = f'В этом тексте: "{docs}", встречается толщина проката "{opt}"? Ответь коротко.'
-steel_mark_in_gost = ai(prompt, show=True)
-if 'да' in steel_mark_in_gost.lower():
+res = ai(prompt, show=True)
+if 'да' in res.lower():
     qwe['thickness_in_gost'] = True
 else:
     qwe['thickness_in_gost'] = False
@@ -150,21 +159,103 @@ prompt = f'Какой класс прочности упомянут в текс
           '  Ответь одним словом.'
 qwe['solidity'] = ai(prompt, show=True)
 
-# Проверяем, что в ГОСТе упоминается эта марка стали
+# Проверяем, что в ГОСТе упоминается этот класс прочности
 docs = rag(f'класс прочности', qwe['gost_num'], qwe['gost_year'],
            show=True)
 opt = qwe['solidity']
 prompt = f'В этом тексте: "{docs}", встречается класс прочности "{opt}"? Ответь коротко.'
-steel_mark_in_gost = ai(prompt, show=True)
-if 'да' in steel_mark_in_gost.lower():
+res = ai(prompt, show=True)
+if 'да' in res.lower():
     qwe['solidity_in_gost'] = True
 else:
     qwe['solidity_in_gost'] = False
 
 # Получаем категорию проката
-prompt = f'Какая категория проката упомянута в тексте: "{query_1}"' \
-          '  Ответь одним словом.'
+prompt = f'Какая категория упомянута в тексте: "{query_1}"' \
+          '  Ответь коротко.'
+res = ai(prompt, show=True)
+prompt = f'"Извлеки число из этого текста: "{res}"'
 qwe['category'] = ai(prompt, show=True)
+
+# Проверяем, что в ГОСТе упоминается эта категория проката
+docs = rag(f'категория', qwe['gost_num'], qwe['gost_year'],
+           show=True)
+opt = qwe['category']
+prompt = f'В этом тексте: "{docs}", встречается категория "{opt}"? Ответь коротко.'
+res = ai(prompt, show=True)
+if 'да' in res.lower():
+    qwe['category_in_gost'] = True
+else:
+    qwe['category_in_gost'] = False
+
+# Находим таблицы с нужной категорией
+opt = qwe['category']
+docs = rag(f'категория {opt} таблица', qwe['gost_num'], qwe['gost_year'],
+           show=True)
+prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается' \
+         f' категория "{opt}"? Ответь коротко.'
+res = ai(prompt, show=True)
+
+prompt = f'Извлеки названия таблиц из этого текста: "{res}". Ответь коротко.'
+res = ai(prompt, show=True)
+res = clean_up_tables_list(res)
+qwe['category_in_tables'] = res
+
+# Находим таблицы с нужной сталью
+opt = qwe['steel']
+docs = rag(f'сталь {opt} таблица', qwe['gost_num'], qwe['gost_year'],
+           show=True)
+prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается сталь' \
+          f' "{opt}"?' \
+          ' Ответь коротко.'
+res = ai(prompt, show=True)
+
+prompt = f'Извлеки названия таблиц из этого текста: "{res}". Ответь коротко.'
+res = ai(prompt, show=True)
+res = clean_up_tables_list(res)
+qwe['steel_in_tables'] = res
+
+# Находим таблицы с нужным классом прочности
+opt = qwe['solidity']
+docs = rag(f'класс прочности {opt} таблица', qwe['gost_num'], qwe['gost_year'],
+           show=True)
+prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается класс прочности' \
+          f' "{opt}"?' \
+          ' Ответь коротко.'
+res = ai(prompt, show=True)
+
+prompt = f'Извлеки названия таблиц из этого текста: "{res}". Ответь коротко.'
+res = ai(prompt, show=True)
+res = clean_up_tables_list(res)
+qwe['solidity_in_tables'] = res
+
+# Находим таблицы с нужным типом проката
+opt = qwe['prokat_type']
+docs = rag(f'тип проката {opt} таблица', qwe['gost_num'], qwe['gost_year'],
+           show=True)
+prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается тип проката' \
+          f' "{opt}"?' \
+          ' Ответь коротко.'
+res = ai(prompt, show=True)
+
+prompt = f'Извлеки названия таблиц из этого текста: "{res}". Ответь коротко.'
+res = ai(prompt, show=True)
+res = clean_up_tables_list(res)
+qwe['type_in_tables'] = res
+
+# Находим таблицы с нужным исполнением
+opt = qwe['prokat_option']
+docs = rag(f'исполнение проката {opt} таблица', qwe['gost_num'], qwe['gost_year'],
+           show=True)
+prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается исполнение проката' \
+          f' "{opt}"?' \
+          ' Ответь коротко.'
+res = ai(prompt, show=True)
+
+prompt = f'Извлеки названия таблиц из этого текста: "{res}". Ответь коротко. Перечисли через запятую.'
+res = ai(prompt, show=True)
+res = clean_up_tables_list(res)
+qwe['prokat_option_in_tables'] = res
 
 
 print(qwe)
