@@ -110,7 +110,7 @@ def get_rag_context(query: str, config_file: str) -> str:
     print('config:', config_file)
     print(collection)
     """
-    if EMBED_MODEL == 'navec':
+    if EMBED_MODEL == 'navec'     :
         emb = ec.navec_embeddings(query)
     else:
         emb = ollama.embeddings(model=EMBED_MODEL, prompt=query)
@@ -199,6 +199,7 @@ def main():
 
     print('\nAssistant is running.\n'
                  'Enter your question or type "q" to exit.\n')
+    print(f'vector collection: <{COLLECTION_NAME}>')             
     if USE_CHAT is True:   
         print('mode: <chat>')
     else:
