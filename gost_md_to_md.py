@@ -31,6 +31,23 @@ SENTENCE_SEPARATOR = '. '
 STAB = 'blabla'
 
 
+def extract_first_table_info(text):
+    # Регулярное выражение для поиска первой строки, начинающейся с 'Таблица',
+    # за которой следует пробел, идентификатор таблицы (число или буква + точка + число),
+    # еще один пробел и имя таблицы
+    #pattern = r'^Таблица\s+((?:\d+)|(?:[a-zA-Z]\.\d+))\s+(.*)$'
+    pattern = r'^Таблица\s+((?:\d+)|(?:[а-яА-Я]\.\d+))\s+(.*)$' 
+    # Находим первое совпадение в тексте
+    match = re.search(pattern, text, flags=re.MULTILINE)
+
+    if match:
+        table_id = match.group(1)
+        table_name = match.group(2)
+        return table_id, table_name
+    else:
+        return None, None  # Если совпадений нет, возвращаем None
+
+
 def build_txt(make_tables_description: bool = False, make_tags: bool = False) -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
     c = 0
@@ -50,12 +67,20 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
             continue
         with open(filename, "r", encoding="utf-8") as f:
             md = f.read()
+        syntetic_table_number = 1
+        
+        # Регулярное выражение для поиска строк, начинающихся с 'Таблица' и заканчивающихся двумя и более символами новой строки
+        #pattern = r'(^Таблица.*?)\n\n'
+        pattern = r'(^Таблица.*?)\n{2,}'
+        # Замена двойных символов новой строки на одинарный
+        md = re.sub(pattern, r'\1\n', md, flags=re.DOTALL | re.MULTILINE)
+
         splitted_md = md.split('\n\n')
 
         # Первая строчка документа должна содержать его название.
         document_name = splitted_md[0]
         gost_num, gost_year = cc.read_gost_number_year(document_name)
-
+        
         table_name = cc.UNNUMBERED_TABLE
         table_number = "undefined"
         bag = []
@@ -71,9 +96,15 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
             res = re.sub(pattern, '---|', res)
             pattern = r'\|\|'
             res = re.sub(pattern, '| |', res)
+            t_number, t_name = extract_first_table_info(res)
+            if t_number is not None:
+                table_number = t_number
+                table_name = t_name
 
             if '|---|' in res:
                 chunk_type = 'table_body'
+                t = cc.wrap_by_tag(table_number, cc.CHUNK_TABLE_NUMBER)
+                t = f'{t}\n{res}'
                 t = cc.wrap_by_tag(table_name, cc.CHUNK_TABLE_NAME)
                 t = f'{t}\n{res}'
                 # Двойной перенос необходим чтобы тэг
@@ -83,19 +114,25 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
                 metas = {'gost_num': gost_num, 'gost_year': gost_year,
                          'type': chunk_type, 'table_number': table_number}
                 ids = f'table_{table_number}_body'
+                table_name = cc.UNNUMBERED_TABLE
+                table_number = "undefined"
             else:
                 chunk_type = 'paragraph'
+                """
                 t_pos = res.find(cc.TABLE)
                 if t_pos == 0:
                     table_name = res
                     table_number = cc.read_table_number(table_name)
                 else:
                     table_name = cc.UNNUMBERED_TABLE
-                    table_number = "без номера"
-                    buf = f'{buf}\n{res}\n'
+                    table_number = "synt_" + str(syntetic_table_number) # "без номера"
+                    syntetic_table_number += 1
+                """    
+                buf = f'{buf}\n{res}\n'
                 metas = {'gost_num': gost_num, 'gost_year': gost_year,
-                         'type': chunk_type}
+                         'type': chunk_type}  
                 ids = ''
+                
             buf = cc.add_tag(buf, cc.CHUNK_META, f'{metas}')
             if len(ids) > 0:
                 buf = cc.add_tag(buf, cc.CHUNK_IDS, f'{ids}')
@@ -146,56 +183,67 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
                 buf = cc.add_tag(buf, cc.CHUNK_IDS, ids)
             clean_bag[i] = buf
 
-        if make_tables_description is True:
-            table_descriptions = []
-            for i, buf in enumerate(clean_bag):
-                if cc.CHUNK_TABLE in buf:
-                    tn = cc.read_tag(buf, cc.CHUNK_TABLE_NAME)
-                    query = "This text contains table in markdown format." \
-                            " Describe this table textually." \
-                            f'Use Russian language. Table\n {buf}'
-    
+        table_descriptions = []
+        for i, buf in enumerate(clean_bag):
+            if cc.CHUNK_TABLE in buf:
+                tn = cc.read_tag(buf, cc.CHUNK_TABLE_NAME)
+                query = 'Этот текст содержит таблицу в формате "markdown".' \
+                        " Выполни текстовое описание этой таблицы." \
+                        f'Таблица:\n {buf}'
+
+                if make_tables_description is True:
                     answer = ollama.generate(model=cc.MAIN_MODEL, prompt=query,
                                              stream=False)
-                    res = answer['response']
-                    print('answer')
-                    desc = (
-                            f'{cc.BEGIN_TAG}\n'
-                            f'<description_of_{cc.CHUNK_NUMBER} {i+1}>\n'
-                            f'<{cc.CHUNK_SRC}>\n{document_name}'
-                            f'\n</{cc.CHUNK_SRC}>'
-                            f'\n<{cc.CHUNK_QUOTE}>'
-                            f'\n{tn}'
-                            f'\n{res}'
-                            f'\n</{cc.CHUNK_QUOTE}>\n')
-                    table_descriptions.append(desc)
-                    print(desc)
-            clean_bag.extend(table_descriptions)
+                else:
+                    answer = {}
+                    answer['response'] = STAB
 
-        if make_tags is True:
-            # Добавляем слова-теги.
-            for i, chunk in enumerate(clean_bag):
-                buf = cc.read_tag(chunk, cc.CHUNK_QUOTE)
-                query = "This text is formatted in markdown format." \
-                        " Describe this text by three or four keywords." \
-                        " If text contains a table include the table name to list of keywords." \
-                        " Your answer should contain only keywords separated by comma." \
-                        f" Use Russian language. Text:\n {buf}"
-    
+                res = answer['response']
+                print('answer')
+                desc = (
+                        f'{cc.BEGIN_TAG}\n'
+                        f'<description_of_{cc.CHUNK_NUMBER} {i+1}>\n'
+                        f'<{cc.CHUNK_SRC}>\n{document_name}'
+                        f'\n</{cc.CHUNK_SRC}>'
+                        f'\n<{cc.CHUNK_QUOTE}>'
+                        f'\n{tn}'
+                        f'\n{res}'
+                        f'\n</{cc.CHUNK_QUOTE}>\n')
+                chunk_type = "table_description"
+                table_description_metas = {'gost_num': gost_num, 'gost_year': gost_year,
+                                           'type': chunk_type, 'table_number': '3'}
+                desc = cc.add_tag(desc, cc.CHUNK_META, f'{table_description_metas}')
+                table_descriptions.append(desc)
+                print(desc)
+        clean_bag.extend(table_descriptions)
+
+        # Добавляем слова-теги.
+        for i, chunk in enumerate(clean_bag):
+            buf = cc.read_tag(chunk, cc.CHUNK_QUOTE)
+            query = 'Это текст в формате "markdown". '\
+                    " Опиши содержание этого текста тремя, четырмя ключевыми словами." \
+                    " Если текст содержит таблицу, дополни список ключевых слов именем таблицы." \
+                    " Твой ответ должен сожержать только ключевые слова рахделенные запятыми." \
+                    f" Пример: металлургия, прокат, требования.\n Вот текст для анализа:\n {buf}"
+
+            if make_tags is True:
                 answer = ollama.generate(model=cc.MAIN_MODEL, prompt=query,
                                          stream=False)
-                res = answer['response']
-                res = res.replace('Теги:', '')
-                res = res.replace('Метки:', '')
-                res = res.replace('Мета-метки:', '')
-                res = res.replace('Ключевые слова:', '') 
-                chunk = (
-                       f'{chunk}'
-                       f'\n<{cc.CHUNK_TAGS}>'
-                       f'\n{res}'
-                       f'\n</{cc.CHUNK_TAGS}>\n')
-                print(chunk)
-                clean_bag[i] = chunk
+            else:
+                answer = {}
+                answer['response'] = STAB
+            res = answer['response']
+            res = res.replace('Теги:', '')
+            res = res.replace('Метки:', '')
+            res = res.replace('Мета-метки:', '')
+            res = res.replace('Ключевые слова:', '') 
+            chunk = (
+                   f'{chunk}'
+                   f'\n<{cc.CHUNK_TAGS}>'
+                   f'\n{res}'
+                   f'\n</{cc.CHUNK_TAGS}>\n')
+            print(chunk)
+            clean_bag[i] = chunk
 
         md_filename = filename.replace(".md", "_chunked.md")
         with open(md_filename, "w", encoding="utf-8") as f:
@@ -204,5 +252,5 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
 
 
 if __name__ == "__main__":
-    #     build_txt() # For generate without Ai-made descriptions.
-    build_txt(make_tables_description=True, make_tags=True)
+    # build_txt() # For generate without Ai-made descriptions.
+      build_txt(make_tables_description=True, make_tags=True)

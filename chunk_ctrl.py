@@ -6,6 +6,7 @@ TABLE = "Таблица"
 UNNUMBERED_TABLE = "Таблица без номера"
 CHUNK_TABLE = 'chunk_table'
 CHUNK_TABLE_NAME = 'chunk_table_name'
+CHUNK_TABLE_NUMBER = 'chunk_table_number'
 CHUNK_QUOTE = 'chunk_quote'
 CHUNK_NUMBER = 'chunk_number'
 CHUNK_TAGS = 'chunk_tags'
