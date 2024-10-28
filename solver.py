@@ -13,7 +13,6 @@ COLLECTION_NAME = cfg['collection_name']
 TABLE_NUMBER = 'table_number'
 
 # Dictionary key names.
-PROKAT_TYPE = 'prokat_type'
 FORM = 'form'
 GOST_NUM = 'gost_num'
 GOST_YEAR = 'gost_year'
@@ -23,7 +22,6 @@ OPTION_IN_TABLES = 'option_in_tables'
 CATEGORY = 'category'
 CATEGORY_IN_DOC = 'category_in_doc'
 CATEGORY_IN_TABLES = 'category_in_tables'
-STEEL = 'steel'
 STEEL_IN_DOC = 'steel_in_doc'
 STEEL_IN_TABLES = 'steel_in_tables'
 THICKNESS = 'thickness'
@@ -43,14 +41,7 @@ for key in PROP_DICT.keys():
 
 pin = pr.ProkatInfo()
 
-def build_characteristic_table(prokat_dict: dict) -> str:
-    s = f'тип проката: {prokat_dict[PROKAT_TYPE]}\n' \
-        f'исполнение: {prokat_dict[OPTION]}\n' \
-        f'класс прочности: {prokat_dict[SOLIDITY]}\n' \
-        f'категория: {prokat_dict[CATEGORY]}\n' \
-        f'толщина: {prokat_dict[THICKNESS]}\n' \
-        f'ГОСТ: {prokat_dict[GOST_NUM]}-{prokat_dict[GOST_YEAR]}\n'
-    return s
+
 
 
 def rag_with_where(context, where_dict, show=False):
@@ -134,9 +125,8 @@ def answering_machine(question: str) -> dict:
     qwe[QUERY_DRY] = pin.ai(prompt, show=True)
 
     # Получаем тип проката
-    prompt = f"Какой тип проката упомянут в тексте: {question} Ответь двумя словами."
-    qwe[PROKAT_TYPE] = pin.ai(prompt)
-    print(PROKAT_TYPE, qwe[PROKAT_TYPE])
+    qwe[pr.PROKAT_TYPE] = pin.prokat_type(question)
+    print(pr.PROKAT_TYPE, qwe[pr.PROKAT_TYPE])
 
     # Получаем название ГОСТа
     prompt = f"Изучи текст: {question} Какой " \
@@ -148,7 +138,9 @@ def answering_machine(question: str) -> dict:
     print('GOST Num:', qwe[GOST_NUM])
     qwe[GOST_YEAR] = gost.split('-')[1]
     print('GOST Year:', qwe[GOST_YEAR])
-    
+
+    pin.gost(question) 
+    exit(0)
     
     # Получаем исполнение проката
     prompt = f'Какое исполнение упомянуто в тексте: "{question}"' \
@@ -169,13 +161,11 @@ def answering_machine(question: str) -> dict:
         qwe[OPTION_IN_DOC] = False
     
     # Получаем марку стали
-    prompt = f'Какая марка стали упомянута в тексте: "{question}"' \
-              '  Ответь одним словом.'
-    qwe[STEEL] = pin.ai(prompt, show=True)
+    qwe[pr.STEEL_MARK] = pin.steel_mark(question)
     
     # Проверяем, что в ГОСТе упоминается эта марка стали
     docs = rag('сталь', GOST_NUM, qwe[GOST_NUM], show=True)
-    opt = qwe[STEEL]
+    opt = qwe[pr.STEEL_MARK]
     prompt = f'В этом тексте: "{docs}", встречается марка стали "{opt}"? Ответь коротко.'
     steel_mark_in_gost = pin.ai(prompt, show=True)
     if 'да' in steel_mark_in_gost.lower():
@@ -243,7 +233,7 @@ def answering_machine(question: str) -> dict:
     qwe[CATEGORY_IN_TABLES] = res
     
     # Находим таблицы с нужной сталью
-    opt = qwe[STEEL]
+    opt = qwe[pr.STEEL_MARK]
     docs = rag(f'сталь {opt} таблица', GOST_NUM, qwe[GOST_NUM], show=True)
     prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается сталь' \
              f' "{opt}"?' \
@@ -266,7 +256,7 @@ def answering_machine(question: str) -> dict:
     qwe[SOLIDITY_IN_TABLES] = res
     
     # Находим таблицы с нужным типом проката
-    opt = qwe[PROKAT_TYPE]
+    opt = qwe[pr.PROKAT_TYPE]
     docs = rag(f'тип проката {opt} таблица', GOST_NUM, qwe[GOST_NUM], show=True)
     prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается тип проката' \
               f' "{opt}"?' \

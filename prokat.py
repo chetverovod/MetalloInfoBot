@@ -97,6 +97,7 @@ class ProkatInfo:
         for key in self.info.keys():
             self.info[key] = '-'
         self.num_ctx = NUM_CTX  
+
     def ai(self, prompt_txt: str, show=False) -> str:
         if show:
             print(colored(f"promt: {prompt_txt}\n", 'light_yellow'))
@@ -106,6 +107,22 @@ class ProkatInfo:
         res = stream["response"].removesuffix('.')
         print(colored(f'>>> {res}\n', 'yellow'))
         return res
+    
+    def gost(self, question: str) -> dict:
+        prompt = f"Изучи текст: {question}." \
+             " Найди в нем название ГОСТа. Выведи номер ГОСТа и год его введения в действие.\n" \
+             " Пример:\n ГОСТ 1281-2014\n - номер ГОСТа: 1281\n - год введения: 2014"
+        res = self.ai(prompt)
+        """
+        prompt = f'Извлеки из текста обозначение ГОСТа. Вот из этого текста: {res}'
+        gost = pin.ai(prompt, show=True)
+        qwe[GOST_NUM] = gost.split('-')[0]
+        print('GOST Num:', qwe[GOST_NUM])
+        qwe[GOST_YEAR] = gost.split('-')[1]
+        print('GOST Year:', qwe[GOST_YEAR])
+        """
+        return res
+
 
     def prokat_type(self, question: str) -> dict:
         preambula = f'Существующие типы металлического проката перечислены через запятую: {prokat_types}.\n'  
@@ -142,3 +159,12 @@ class ProkatInfo:
         res = self.ai(prompt)
         self.info[FORM] = res
         return res
+    
+    def build_characteristic_table(self, prokat_dict: dict) -> str:
+        s = f'тип проката: {self.info[PROKAT_TYPE]}\n' \
+            f'исполнение: {self.info[OPTION]}\n' \
+            f'класс прочности: {self.info[SOLIDITY]}\n' \
+            f'категория: {self.info[CATEGORY]}\n' \
+            f'толщина: {self.info[THICKNESS]}\n' \
+            f'ГОСТ: {self.info[GOST_NUM]}-{self.info[GOST_YEAR]}\n'
+        return s
