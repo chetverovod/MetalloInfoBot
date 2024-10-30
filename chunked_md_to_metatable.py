@@ -71,15 +71,15 @@ def build_metatables(use_ai: bool = False) -> int:
         stop = 0
         for chunk in chunks:
             if cc.is_tag_in_text(chunk, cc.CHUNK_TABLE):
-                #chunk = cc.remove_tag(chunk, cc.CHUNK_META)
-                #chunk = cc.remove_tag(chunk, cc.CHUNK_TAGS)
-                #chunk = cc.remove_tag(chunk, cc.CHUNK_IDS)
-                #chunk = cc.remove_tag(chunk, cc.CHUNK_SRC)
-                #chunk = cc.remove_tag(chunk, cc.CHUNK_TABLE_NAME)
-                #chunk = cc.remove_tag(chunk, cc.CHUNK_NUMBER)
-                #chunk = cc.unwrap_from_tag(chunk, cc.CHUNK_QUOTE)
-                #chunk = cc.unwrap_from_tag(chunk, cc.CHUNK_TABLE)
-                #chunk = re.sub(r'\n{2,}', '\n', chunk)
+                chunk = cc.remove_tag(chunk, cc.CHUNK_META)
+                chunk = cc.remove_tag(chunk, cc.CHUNK_TAGS)
+                chunk = cc.remove_tag(chunk, cc.CHUNK_IDS)
+                chunk = cc.remove_tag(chunk, cc.CHUNK_SRC)
+                chunk = cc.remove_tag(chunk, cc.CHUNK_TABLE_NAME)
+                chunk = cc.remove_tag(chunk, cc.CHUNK_NUMBER)
+                chunk = cc.unwrap_from_tag(chunk, cc.CHUNK_QUOTE)
+                chunk = cc.unwrap_from_tag(chunk, cc.CHUNK_TABLE)
+                chunk = re.sub(r'\n{2,}', '\n', chunk)
                 print('------------------------------------')
                 if use_ai is True:
                     query = f"""Это:\n {chunk} \n - описание таблицы в формате "markdown".
@@ -109,8 +109,6 @@ def build_metatables(use_ai: bool = False) -> int:
 
 
 if __name__ == "__main__":
-    # build_txt() # For generate without Ai-made descriptions.
-    #  build_txt(make_tables_description=True, make_tags=True)
-    #build_metatables(True)
-    build_metatables()
+    build_metatables(use_ai=True)
+    #build_metatables()
 
