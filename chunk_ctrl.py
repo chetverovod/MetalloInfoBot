@@ -1,4 +1,5 @@
 import config
+import re
 
 CHUNK_CUT = '<--------------chunk_cut>---------------->'
 CHUNK_SRC = 'chunk_src'
@@ -21,7 +22,7 @@ MAIN_MODEL = models_cfg["mainmodel"]
 def read_tag(text: str, tag: str) -> str:
     t = text.split(f'</{tag}>')[0]
     t = t.split(f'<{tag}>')
-    if len(t)>1:
+    if len(t) > 1:
         t = t[1]
     else:
         t = ""
@@ -29,10 +30,16 @@ def read_tag(text: str, tag: str) -> str:
 
 
 def remove_tag(text: str, tag: str) -> str:
+    """Remove tag and it's data."""
+
     if f'<{tag}>' in text:
         head = text.split(f'<{tag}>')[0]
         tail = text.split(f'</{tag}>')[1]
         return f'{head}{tail}'
+    if f'<{tag}' in text:  # Случай когда тэг не имеет закрывающего парного тэга.
+        pattern = rf'<{tag}.*>'
+        return re.sub(pattern, '', text)
+    
     return text
 
 
@@ -41,10 +48,23 @@ def wrap_by_tag(text: str, tag: str) -> str:
     return t
 
 
+def unwrap_from_tag(text: str, tag: str) -> str:
+    t = text.replace(f'<{tag}>', '')
+    t = t.replace(f'</{tag}>', '')
+    return t
+
+
 def add_tag(text: str, tag: str, tag_body) -> str:
     w = wrap_by_tag(tag_body, tag)
     t = f'{text}\n{w}'
     return t
+
+
+def is_tag_in_text(text: str, tag: str) -> bool:
+    if f'<{tag}>' in text:
+        return True
+    else:
+        return False
 
 
 def read_gost_number_year(doc_name):

@@ -42,7 +42,7 @@ def extract_first_table_info(text):
 
     if match:
         table_id = match.group(1)
-        table_name = match.group(2)
+        table_name = match.group(2).split('|')[0]
         return table_id, table_name
     else:
         return None, None  # Если совпадений нет, возвращаем None
@@ -67,12 +67,13 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
             continue
         with open(filename, "r", encoding="utf-8") as f:
             md = f.read()
-        syntetic_table_number = 1
         
-        # Регулярное выражение для поиска строк, начинающихся с 'Таблица' и заканчивающихся двумя и более символами новой строки
+        # Регулярное выражение для поиска строк, начинающихся с 'Таблица'
+        #  и заканчивающихся двумя и более символами новой строки
         #pattern = r'(^Таблица.*?)\n\n'
         pattern = r'(^Таблица.*?)\n{2,}'
-        # Замена двойных символов новой строки на одинарный
+        # Замена двойных символов новой строки после строки с названием
+        # таблицы на одинарный
         md = re.sub(pattern, r'\1\n', md, flags=re.DOTALL | re.MULTILINE)
 
         splitted_md = md.split('\n\n')
@@ -118,16 +119,6 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
                 table_number = "undefined"
             else:
                 chunk_type = 'paragraph'
-                """
-                t_pos = res.find(cc.TABLE)
-                if t_pos == 0:
-                    table_name = res
-                    table_number = cc.read_table_number(table_name)
-                else:
-                    table_name = cc.UNNUMBERED_TABLE
-                    table_number = "synt_" + str(syntetic_table_number) # "без номера"
-                    syntetic_table_number += 1
-                """    
                 buf = f'{buf}\n{res}\n'
                 metas = {'gost_num': gost_num, 'gost_year': gost_year,
                          'type': chunk_type}  
@@ -252,5 +243,5 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
 
 
 if __name__ == "__main__":
-    # build_txt() # For generate without Ai-made descriptions.
-      build_txt(make_tables_description=True, make_tags=True)
+    build_txt() # For generate without Ai-made descriptions.
+    #  build_txt(make_tables_description=True, make_tags=True)
