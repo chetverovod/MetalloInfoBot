@@ -5,13 +5,12 @@ from embd_func import NavecEmbeddingFunction
 
 class Chromadb_api():
     def __init__(self):
-        self.collection = self.load_db()
-
+        self.load_db()
 
     def load_db(
         self,
-        bd_path: str="./chromadb/chromadb",
-        collection_name: str="metalloprokat"
+        bd_path: str = ".vector_db_stores/chromadb/chromadb",
+        collection_name: str = "metalloprokat"
     ) -> None:
         self.collection = chromadb.PersistentClient(
             path=bd_path).get_collection(
@@ -19,28 +18,29 @@ class Chromadb_api():
                 embedding_function=NavecEmbeddingFunction()
         )
 
-
     def query_to_db(
             self,
             question: str,
             filter_list: list,
-            n_results: int=40
+            n_results: int = 40
             ) -> str:
         """
-        Запросы в базу с фильтрацией метаданных рекурсивно с уменьшением фильтра
+        Запросы в базу с фильтрацией метаданных рекурсивно с уменьшением
+        строгости фильтра.
         """
+
         if not hasattr(self, 'collection'):
             self.load_db()
         if len(filter_list) == 1:
-             meta_filter = filter_list[0]
+            meta_filter = filter_list[0]
         else:
             meta_filter = {"$and": filter_list}
         results = self.collection.query(
-            query_texts=question,
-            where = meta_filter,
-            n_results=n_results
+                                        query_texts=question,
+                                        where=meta_filter,
+                                        n_results=n_results
         )
         if len(results['ids'][0]):
             return results
-        else:            
+        else:
             results = self.query_to_db(question, filter_list[1:])

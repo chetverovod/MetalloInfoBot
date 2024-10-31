@@ -5,7 +5,6 @@ class Llama_api():
     def __init__(self):    
         self.llm = self.load_llm()
 
-
     def load_llm(
         self,
         model_path: str="models/qwen2.5-14b-instruct-q3_k_m-00001-of-00002.gguf"
@@ -19,14 +18,13 @@ class Llama_api():
             verbose=False
         )        
 
-
     def llm_request(self, prompt: str) -> str:
         if not hasattr(self, 'llm'):
             self.load_llm()
         answer = self.llm.create_chat_completion(
-            messages = [{
-				"role": "assistant",
-				"content": prompt
-		    }]
+                                                 messages = [{
+				                                            "role": "assistant",
+				                                            "content": prompt
+		                                                    }]
 	    )
         return answer['choices'][0]['message']['content']
