@@ -19,6 +19,14 @@ USE_CHAT = cfg['use_chat']
 COLLECTION_NAME = cfg['collection_name']
 PRINT_CONTEXT = cfg['print_context']
 CHROMA_PORT = cfg['chroma_port']
+USE_EXTERNAL_EMBEDDING = cfg['use_external_embedding']
+
+
+# Включаем логирование, чтобы не пропустить важные сообщения
+if PRINT_CONTEXT is True:
+    logging.basicConfig(level=logging.INFO, filename='model_io.log',
+                        filemode="w")
+
 
 def bytes_to_gb(bytes_value):
     return bytes_value / (1024 ** 3)
@@ -89,7 +97,7 @@ def build_prompt(user_query: str, rag_context: str) -> str:
     return prompt
 
 
-def get_rag_context(query: str, config_file: str) -> str:
+def get_rag_context(query: str, config_file: str, n_results=5) -> str:
     """Get reference text."""
 
     cfg = config.Config(config_file)
@@ -109,18 +117,28 @@ def get_rag_context(query: str, config_file: str) -> str:
     collection = get_collection(COLLECTION_NAME)
     print('config:', config_file)
     print(collection)
-    """
-    if EMBED_MODEL == 'navec'     :
-        emb = ec.navec_embeddings(query)
-    else:
-        emb = ollama.embeddings(model=EMBED_MODEL, prompt=query)
-    queryembed = emb["embedding"]
-    relevant_docs = collection.query(
-        query_embeddings=[queryembed], n_results=5)["documents"][0]
-    """
-    relevant_docs = collection.query(
-        query_texts=(query), n_results=5)["documents"][0]
 
+    if USE_EXTERNAL_EMBEDDING is True:
+        if EMBED_MODEL == 'navec'     :
+            emb = ec.navec_embeddings(query)
+        else:
+            emb = ollama.embeddings(model=EMBED_MODEL, prompt=query)
+        queryembed = emb["embedding"]
+        qres = collection.query(
+            query_embeddings=[queryembed], n_results=n_results)
+    else:
+        qres = collection.query(query_texts=(query), n_results=n_results)
+
+    logging.info('query: %s', query)
+    logging.info('\n--------------------------------------------------------\n')
+    s = qres['distances'][0]
+    d = qres['documents'][0]
+    for score, doc in zip(s, d):
+        logging.info(score)
+        logging.info(doc)
+        logging.info('\n--------------------------------------------------------\n')
+    relevant_docs = qres["documents"][0]
+    
     context = "\n\n".join(relevant_docs)
     # free_mem_collection(COLLECTION_NAME)
     return context
@@ -214,7 +232,7 @@ def main():
     while run_flag is True:
         query = input(query_tag)
         if query.capitalize() != 'Q' and query.capitalize() != 'Й':
-            rag_context = get_rag_context(query, DEFAULT_SETTINGS_FILE)
+            rag_context = get_rag_context(query, DEFAULT_SETTINGS_FILE, n_results=40)
             modelquery = build_prompt(query, rag_context)
             log_rag_context(query, rag_context)
 

@@ -10,6 +10,7 @@ import argparse
 import re
 from pathlib import Path
 import ollama
+import json
 
 # Load settings from configuration file.
 cfg = config.Config('html_to_md.cfg')
@@ -31,26 +32,10 @@ SENTENCE_SEPARATOR = '. '
 STAB = 'blabla'
 
 
-def extract_first_table_info(text):
-    # Регулярное выражение для поиска первой строки, начинающейся с 'Таблица',
-    # за которой следует пробел, идентификатор таблицы (число или буква + точка + число),
-    # еще один пробел и имя таблицы
-    #pattern = r'^Таблица\s+((?:\d+)|(?:[a-zA-Z]\.\d+))\s+(.*)$'
-    pattern = r'^Таблица\s+((?:\d+)|(?:[а-яА-Я]\.\d+))\s+(.*)$' 
-    # Находим первое совпадение в тексте
-    match = re.search(pattern, text, flags=re.MULTILINE)
-
-    if match:
-        table_id = match.group(1)
-        table_name = match.group(2)
-        return table_id, table_name
-    else:
-        return None, None  # Если совпадений нет, возвращаем None
-
-
 def build_metatables(use_ai: bool = False) -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
     c = 0
+    bag = ''
     for path in files:
         if path.endswith("chunked.md"):
             c += 1
@@ -67,10 +52,17 @@ def build_metatables(use_ai: bool = False) -> int:
             continue
         with open(filename, "r", encoding="utf-8") as f:
             md = f.read()
-        chunks = md.split(cc.BEGIN_TAG) 
+        splitted_md = md.split(cc.BEGIN_TAG) 
+        s = cc.read_tag(splitted_md[1], cc.CHUNK_META)
+        s = s.replace("'", '"')
+        print(s)
+        data_dict = json.loads(s)
+        gost_num = data_dict['gost_num']
+        gost_year = data_dict['gost_year']
         stop = 0
-        for chunk in chunks:
-            if cc.is_tag_in_text(chunk, cc.CHUNK_TABLE):
+        for chunk in splitted_md:
+            meta = cc.read_tag(chunk, cc.CHUNK_META)
+            if cc.is_tag_in_text(chunk, cc.CHUNK_TABLE) and (cc.CHUNK_TYPE_TABLE_BODY not in meta): 
                 chunk = cc.remove_tag(chunk, cc.CHUNK_META)
                 chunk = cc.remove_tag(chunk, cc.CHUNK_TAGS)
                 chunk = cc.remove_tag(chunk, cc.CHUNK_IDS)
@@ -101,14 +93,16 @@ def build_metatables(use_ai: bool = False) -> int:
                     opt = {"temperature": 0.}
                     metatable = ollama.generate(model=cc.MAIN_MODEL, prompt=query, options=opt)['response']
                     print(metatable)
+                    cc.add_table_meta(bag, metatable, gost_num, gost_year)
                 else:
                     print(chunk)
                 stop += 1
                 if stop > 3:
+                    print(bag)
                     exit(0)    
 
 
 if __name__ == "__main__":
-    build_metatables(use_ai=True)
-    #build_metatables()
+   build_metatables(use_ai=True)
+   # build_metatables()
 

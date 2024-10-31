@@ -19,6 +19,7 @@ cfg = config.Config(DEFAULT_SETTINGS_FILE)
 COLLECTION_NAME = cfg['collection_name']
 #PRINT_CONTEXT = cfg['print_context']
 CHROMA_PORT = cfg['chroma_port']
+USE_EXTERNAL_EMBEDDING = cfg['use_external_embedding']
 
 
 def chunk_text_by_tags(source_text, tag_of_begin: str,
@@ -44,9 +45,17 @@ def delete_collection() -> int:
 def build_collection() -> int:
     delete_collection() 
     chroma_client = chromadb.HttpClient(host="localhost", port=CHROMA_PORT)
-    collection = chroma_client.get_or_create_collection(
+    if USE_EXTERNAL_EMBEDDING is True:
+        collection = chroma_client.get_or_create_collection(
+                                                            name=COLLECTION_NAME,
+                                                            metadata={"hnsw:space": "cosine"}
+                                                           )
+    else:
+        collection = chroma_client.get_or_create_collection(
                                                         name=COLLECTION_NAME,
-                                                        metadata={"hnsw:space": "cosine"},
+                                                        #metadata={"hnsw:space": "cosine"},
+                                                        #metadata={"hnsw:space": "l2"},
+                                                        metadata={"hnsw:space": "ip"},
                                                         embedding_function=NavecEmbeddingFunction()
                                                        )
 
@@ -89,15 +98,7 @@ def build_collection() -> int:
         
         chunks_counter += len(chunks)
         for index, chunk in enumerate(chunks):
-            #if EMBED_MODEL == "navec":
-                #print(index, chunk)
-                #embed = ec.navec_embeddings(chunk)["embedding"]
-            #else:
-            #    embed = ollama.embeddings(model=EMBED_MODEL, prompt=chunk)[
-            #        "embedding"
-            #    ]
-            #print(f"{index} {chunk}")    
-            #print(".", end="", flush=True)
+            
             num = cc.read_tag(chunk, cc.CHUNK_NUMBER)
             print(num)
             context = cc.read_tag(chunk, cc.CHUNK_QUOTE)
@@ -108,7 +109,7 @@ def build_collection() -> int:
             context = context.replace('_', " ")
             context = context.replace('таблица_без_имени', 'таблица')
             context = context.strip()
-
+           
             # Пустой контекст приводит к падению.
             if len(context) < 1:
                 continue
@@ -119,6 +120,15 @@ def build_collection() -> int:
                 continue
             if "<chunk_src" in context:
                 exit(0)
+
+            if EMBED_MODEL == "navec":
+                print(index, context)
+                embed = ec.navec_embeddings(context)["embedding"]
+            else:
+                embed = ollama.embeddings(model=EMBED_MODEL, prompt=context)[
+                    "embedding"
+                ]
+
             metas = cc.read_tag(chunk, cc.CHUNK_META)
             if len(metas) == 0:
                 metas = None 
@@ -127,12 +137,20 @@ def build_collection() -> int:
             print('metas =', metas)
             
             ids = cc.read_tag(chunk, cc.CHUNK_IDS)
-            print('ids = !', ids,"!")
-            collection.add(
-                ids=[filename + str(index)],
-                documents=[context],
-                metadatas=[metas]
-                )
+            print('ids = !', ids, "!")
+            if USE_EXTERNAL_EMBEDDING is True:
+                collection.add(
+                    [filename + str(index)],
+                    [embed],
+                    documents=[context], # [chunk]
+                    metadatas=[metas] # metadatas={"source": filename},
+                    )
+            else:
+                collection.add(
+                    ids=[filename + str(index)],
+                    documents=[context],
+                    metadatas=[metas]
+                    )
 
     return chunks_counter
 

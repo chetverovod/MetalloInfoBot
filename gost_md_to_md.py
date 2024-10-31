@@ -318,47 +318,6 @@ gost_14637_89_tables_meta = [
 ]
 
 
-def add_table_meta(bag, table_meta, gost_num, gost_year):
-    for table in table_meta:
-        chunk_type = 'table_meta' 
-        table_number = "undefined"
-        table_name = cc.UNNUMBERED_TABLE
-        buf = ''
-        buf = f'{buf}\n{cc.CHUNK_CUT}'
-        t_number, t_name = extract_first_table_info(table['Название таблицы'])
-        if t_number is not None:
-            table_number = t_number.upper()
-            table_name = t_name
-        t = cc.wrap_by_tag(table_number, cc.CHUNK_TABLE_NUMBER)
-        res = f'{t}'
-        t = cc.wrap_by_tag(table_name, cc.CHUNK_TABLE_NAME)
-        res = f'{t}\n{res}'
-        t = cc.wrap_by_tag(f'{table}\n', cc.CHUNK_TABLE)
-        buf = f'{buf}\n{t}\n{res}'
-        metas = {'gost_num': gost_num, 'gost_year': gost_year,
-                 'type': chunk_type, 'table_number': table_number}
-        buf = cc.add_tag(buf, cc.CHUNK_META, f'{metas}')
-        bag.append(buf)
-        print(buf)
-
-
-def extract_first_table_info(text):
-    # Регулярное выражение для поиска первой строки, начинающейся с 'Таблица',
-    # за которой следует пробел, идентификатор таблицы (число или буква + точка + число),
-    # еще один пробел и имя таблицы
-    #pattern = r'^Таблица\s+((?:\d+)|(?:[a-zA-Z]\.\d+))\s+(.*)$'
-    pattern = r'^Таблица\s+((?:\d+)|(?:[а-яА-Я]\.\d+))\s+(.*)$' 
-    # Находим первое совпадение в тексте
-    match = re.search(pattern, text, flags=re.MULTILINE)
-
-    if match:
-        table_id = match.group(1)
-        table_name = match.group(2).split('|')[0]
-        return table_id, table_name
-    else:
-        return None, None  # Если совпадений нет, возвращаем None
-
-
 def build_txt(make_tables_description: bool = False, make_tags: bool = False) -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
     c = 0
@@ -408,13 +367,13 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
             res = re.sub(pattern, '---|', res)
             pattern = r'\|\|'
             res = re.sub(pattern, '| |', res)
-            t_number, t_name = extract_first_table_info(res)
+            t_number, t_name = cc.extract_first_table_info(res)
             if t_number is not None:
                 table_number = t_number.upper()
                 table_name = t_name
 
             if '|---|' in res:
-                chunk_type = 'table_body'
+                chunk_type = cc.CHUNK_TYPE_TABLE_BODY
                 t = cc.wrap_by_tag(table_number, cc.CHUNK_TABLE_NUMBER)
                 t = f'{t}\n{res}'
                 t = cc.wrap_by_tag(table_name, cc.CHUNK_TABLE_NAME)
@@ -429,7 +388,7 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
                 table_name = cc.UNNUMBERED_TABLE
                 table_number = "undefined"
             else:
-                chunk_type = 'paragraph'
+                chunk_type = cc.CHUNK_TYPE_PARAGRAPH
                 buf = f'{buf}\n{res}\n'
                 metas = {'gost_num': gost_num, 'gost_year': gost_year,
                          'type': chunk_type}  
@@ -441,10 +400,12 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
             bag.append(buf)
 
         if gost_num == '19281':
-            add_table_meta(bag, gost_19281_2014_tables_meta, gost_num, gost_year)
+            for t in gost_19281_2014_tables_meta:
+                cc.add_table_meta(bag, t, gost_num, gost_year)
         
         if gost_num == '14637':
-            add_table_meta(bag, gost_14637_89_tables_meta, gost_num, gost_year)
+            for t in gost_14637_89_tables_meta:
+                cc.add_table_meta(bag, t, gost_num, gost_year)
         bulk = "\n".join(bag)
         print(bulk)
 
@@ -503,7 +464,7 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
                         f'\n{tn}'
                         f'\n{res}'
                         f'\n</{cc.CHUNK_QUOTE}>\n')
-                chunk_type = "table_description"
+                chunk_type = cc.CHUNK_TYPE_TABLE_DESCRIPTION
                 table_description_metas = {'gost_num': gost_num, 'gost_year': gost_year,
                                            'type': chunk_type, 'table_number': '3'}
                 desc = cc.add_tag(desc, cc.CHUNK_META, f'{table_description_metas}')

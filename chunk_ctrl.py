@@ -13,6 +13,9 @@ CHUNK_NUMBER = 'chunk_number'
 CHUNK_TAGS = 'chunk_tags'
 CHUNK_META = 'chunk_meta'
 CHUNK_IDS = 'chunk_ids'
+CHUNK_TYPE_PARAGRAPH = 'paragraph'
+CHUNK_TYPE_TABLE_BODY = 'table_body'
+CHUNK_TYPE_TABLE_DESCRIPTION = "table_description"
 
 models_cfg = config.Config('models.cfg')
 BEGIN_TAG = models_cfg['begin_tag']
@@ -81,3 +84,43 @@ def read_table_number(table_name):
     digits = value[1].split(' ')
     number = digits[1]
     return number
+
+
+def extract_first_table_info(text: str) -> tuple[str, str]:
+    # Регулярное выражение для поиска первой строки, начинающейся с 'Таблица',
+    # за которой следует пробел, идентификатор таблицы (число или буква + точка + число),
+    # еще один пробел и имя таблицы
+    #pattern = r'^Таблица\s+((?:\d+)|(?:[a-zA-Z]\.\d+))\s+(.*)$'
+    pattern = r'^Таблица\s+((?:\d+)|(?:[а-яА-Я]\.\d+))\s+(.*)$' 
+    # Находим первое совпадение в тексте
+    match = re.search(pattern, text, flags=re.MULTILINE)
+
+    if match:
+        table_id = match.group(1)
+        table_name = match.group(2).split('|')[0]
+        return table_id, table_name
+    else:
+        return None, None  # Если совпадений нет, возвращаем None
+
+
+def add_table_meta(bag, table: dict, gost_num, gost_year):
+    chunk_type = 'table_meta' 
+    table_number = "undefined"
+    table_name = UNNUMBERED_TABLE
+    buf = ''
+    buf = f'{buf}\n{CHUNK_CUT}'
+    print(f'table: {table}')
+    t_number, t_name = extract_first_table_info(table['Название таблицы'])
+    if t_number is not None:
+        table_number = t_number.upper()
+        table_name = t_name
+    t = wrap_by_tag(table_number, CHUNK_TABLE_NUMBER)
+    res = f'{t}'
+    t = wrap_by_tag(table_name, CHUNK_TABLE_NAME)
+    res = f'{t}\n{res}'
+    t = wrap_by_tag(f'{table}\n', CHUNK_TABLE)
+    buf = f'{buf}\n{t}\n{res}'
+    metas = {'gost_num': gost_num, 'gost_year': gost_year,
+             'type': chunk_type, 'table_number': table_number}
+    buf = add_tag(buf, CHUNK_META, f'{metas}')
+    bag.append(buf)
