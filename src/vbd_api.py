@@ -1,6 +1,5 @@
 import chromadb
-#from src.embd_func import NavecEmbeddingFunction
-from embd_func import NavecEmbeddingFunction
+from src.embd_func import NavecEmbeddingFunction
 
 
 class Chromadb_api():
@@ -9,7 +8,7 @@ class Chromadb_api():
 
     def load_db(
         self,
-        bd_path: str = ".vector_db_stores/chromadb/chromadb",
+        bd_path: str = "vectordb-stores/chromadb",
         collection_name: str = "metalloprokat"
     ) -> None:
         self.collection = chromadb.PersistentClient(

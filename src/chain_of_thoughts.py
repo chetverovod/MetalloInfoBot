@@ -2,11 +2,10 @@ import json
 
 
 class Chain_of_thoughts():
-    def __init__(self, question: str=None):
+    def __init__(self, question: str = None):
         self.doc_num = False
         if question is not None:
             self.start(question)
-
 
     def search_doc_num(self, question: str) -> None:
         """
@@ -28,13 +27,13 @@ class Chain_of_thoughts():
 нет"""
         # TODO Здесь нужно переделать вывод
         answer = self.llm_request(prompt)
+        print("Answer:", answer)
         if answer != "нет":
             try:
                 self.doc_num = answer.split(' ')
                 self.doc_num = self.doc_num[1].split('-')[0]
             except:
                 print("Ошибка парсинга номера НТД")
-
 
     def start(self, question: str) -> None:
         """
@@ -53,15 +52,15 @@ class Chain_of_thoughts():
 Таблица
 Схема/рисунок"""
         answer = self.llm_request(prompt)
-        if answer == "Текст":
+        print("Start Answer:", answer)
+        if "текст" in answer.lower():
             self.find_by_text(question=question)
-        elif answer == "Таблица":
+        elif "таблица" in answer.lower():
             self.find_by_tables_meta(question)
-        elif answer == "Схема/рисунок":
+        elif "схема/рисунок" in answer.lower():
             pass
         else:
             pass
-
 
     def find_by_text(self, question: str) -> dict:
         """
@@ -79,11 +78,12 @@ class Chain_of_thoughts():
         answer = self.llm_request(prompt)
         print(answer)
 
-
     def find_by_tables_meta(self, question: str) -> dict:
         """
         Определяем параметры для выбора нужной таблицы
         """
+
+        print("find_by_tables_meta Answer")
         if self.doc_num:
             filter_list = [{"gost_num": str(self.doc_num)}, {"type": "table_meta"}]
         else:

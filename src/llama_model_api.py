@@ -22,9 +22,9 @@ class Llama_api():
         if not hasattr(self, 'llm'):
             self.load_llm()
         answer = self.llm.create_chat_completion(
-                                                 messages = [{
+                                                 messages=[{
 				                                            "role": "assistant",
 				                                            "content": prompt
-		                                                    }]
+		                                                   }]
 	    )
         return answer['choices'][0]['message']['content']

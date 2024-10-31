@@ -10,9 +10,11 @@ class NavecEmbeddingFunction(EmbeddingFunction):
     def __init__(
             self,
             model_name: str = "navec_hudlit_v1_12B_500K_300d_100q.tar",
-            model_path: str = './models/'
+            model_path: str = 'emb_models/'
     ):
-            self.navec = Navec.load(model_path + model_name)
+        print(model_path)
+        print(model_name)
+        self.navec = Navec.load(model_path + model_name)
 
     @staticmethod
     def _preprocess(text: str) -> list:
