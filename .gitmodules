@@ -1,3 +1,6 @@
 [submodule "MotobikeServiceBot"]
 	path = MotobikeServiceBot
 	url = https://github.com/chetverovod/MotobikeServiceBot.git
+[submodule "tlgbotcore"]
+	path = tlgbotcore
+	url = https://github.com/chetverovod/tlgbotcore.git
