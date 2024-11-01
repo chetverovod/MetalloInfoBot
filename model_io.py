@@ -92,7 +92,7 @@ def build_prompt(rag_context: str) -> str:
     #prompt = BASE_FOR_PROMPT.replace('<user_query>', user_query)
     prompt = BASE_FOR_PROMPT
     prompt = prompt.replace('<rag_context>', rag_context)
-
+    logging.info("prompt: %s", prompt)
     #prompt = prompt.replace('<conversation_history>', ' '.join(flat_book))
     #logging.info('conversation_book: %s', conversation_book)
     return prompt
@@ -189,18 +189,18 @@ def get_answer(user_query: str, models_config_file: str,
     query = user_query
     prompt = build_prompt(rag_context)
     log_rag_context(user_query, rag_context)
-    flat_book = build_flat_book(user_query, prompt, history_book)
-
+    print(prompt)
     if USE_CHAT is True:
+        flat_book = build_flat_book(user_query, prompt, history_book)
         logging.info('<chat> mode')
         #NUM_CTX = 4096 #2048
         #opt = {temprature:0, "num_ctx": NUM_CTX}
         opt = {"temperature": 0 , "seed": 42, "num_ctx": 8000}
         #response = ollama.chat(model=MAIN_MODEL, messages=flat_book, options=opt)
         if query == "Привет!":
-            res = "Привет!" 
-        else:    
-            response = ollama.chat(model=MAIN_MODEL, messages=flat_book, options=opt )
+            res = "Привет!"
+        else:
+            response = ollama.chat(model=MAIN_MODEL, messages=flat_book, options=opt)
             res = response['message']['content']
             low_res = res.lower()
             if ' бот' in low_res:
@@ -212,10 +212,9 @@ def get_answer(user_query: str, models_config_file: str,
             #s = {"role": "user", "content": f'Напиши этот текст предложение в женском роде:"{res}"'}     
             #response = ollama.chat(model=MAIN_MODEL, messages=flat_book, options=opt )
     else:
-        logging.info('<generate mode> mode')
-        res = ollama.generate(model=MAIN_MODEL, prompt=prompt,
-                                 stream=False,  options=opt) 
-        res = response['message']['content']
+        logging.info('<generate> mode')
+        response = ollama.generate(model=MAIN_MODEL, prompt=f'{prompt}\n Ответь на вопрос:{query}')
+        res = response["response"]
     logging.info(res)
     return res
 
