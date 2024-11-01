@@ -2,9 +2,9 @@
 import ollama
 
 #MAIN_MODEL = 'llama3.1'
-#MAIN_MODEL = 'qwen2.5:14b'
+MAIN_MODEL = 'qwen2.5:14b'
 #MAIN_MODEL = 'qwen2.5:32b' # Компьютер не тянет.
-MAIN_MODEL = 'phi3:14b'
+#MAIN_MODEL = 'phi3:14b'
 
 class Llama_api():
     def __init__(self):    

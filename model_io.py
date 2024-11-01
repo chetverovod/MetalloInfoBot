@@ -9,6 +9,12 @@ import config
 import gc
 import os
 import psutil
+from src.chain_of_thoughts import Chain_of_thoughts
+from src.vbd_api import Chromadb_api
+#from src.llama_model_api import Llama_api
+from src.ollama_model_api import Llama_api
+#from src.gigachat_api import Giga_chat
+
 
 # Load settings from configuration file.
 DEFAULT_SETTINGS_FILE = 'models.cfg'
@@ -179,10 +185,24 @@ def build_flat_book(user_query: str, prompt: str,
     return flat_book
 
 
+class Answer_generator(Chain_of_thoughts, Llama_api, Chromadb_api):
+    pass
+
+#class Answer_generator(Chain_of_thoughts, Giga_chat, Chromadb_api):
+#    pass
+
+
+def get_chain_answer(query: str) -> str:
+    answer_generator = Answer_generator()
+    res = answer_generator.start(query)
+    return res
+
+
 def get_answer(user_query: str, models_config_file: str,
                history_book: list[str]) -> str:
     """ Make single answer."""
-
+    print(user_query)
+    return get_chain_answer(user_query)
     rag_context = get_rag_context(user_query, models_config_file)
     if len(rag_context) == 0:
         logging.info("RAG context is empty fo query: %s", user_query)

@@ -35,7 +35,7 @@ class Chain_of_thoughts():
             except:
                 print("Ошибка парсинга номера НТД")
 
-    def start(self, question: str) -> None:
+    def start(self, question: str) -> str:
         """
         Определяем, в каком разделе искать информацию по данному запросу
         """
@@ -54,13 +54,14 @@ class Chain_of_thoughts():
         answer = self.llm_request(prompt)
         print("Start Answer:", answer)
         if "текст" in answer.lower():
-            self.find_by_text(question=question)
+            res = self.find_by_text(question=question)
         elif "таблица" in answer.lower():
-            self.find_by_tables_meta(question)
+            res = self.find_by_tables_meta(question)
         elif "схема/рисунок" in answer.lower():
             pass
         else:
             pass
+        return res
 
     def find_by_text(self, question: str) -> dict:
         """
@@ -126,5 +127,6 @@ class Chain_of_thoughts():
 Содержание серы: 0.025.
 Диаметр оправки: 0.5
 Рабочая нагрузка: 300 КПа."""
-        print(self.llm_request(prompt))
-
+        res = self.llm_request(prompt)
+        print(res)
+        return res
