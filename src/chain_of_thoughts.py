@@ -51,6 +51,7 @@ class Chain_of_thoughts():
 Текст
 Таблица
 Схема/рисунок"""
+        res ="query not handled"
         answer = self.llm_request(prompt)
         print("Start Answer:", answer)
         if "текст" in answer.lower():
@@ -62,13 +63,17 @@ class Chain_of_thoughts():
         else:
             pass
         return res
-
+    
+    
     def find_by_text(self, question: str) -> dict:
         """
         Ищем ответ в текстовых блоках
         """
-        filter_list = [{"gost_num": str(self.doc_num)}, {"type": "paragraph"}]
-        db_answer = self.query_to_db(question, filter_list)
+        if self.doc_num:
+            filter_list = [{"gost_num": str(self.doc_num)}, {"type": "paragraph"}]
+        else:
+            filter_list = [{"type": "paragraph"}]
+        db_answer = self.query_to_db(question, filter_list, n_results=40)
         db_answer = '\n'.join(db_answer['documents'][0])
         prompt = f"""Ты исследователь текстов, который абсолютно точно соблюдает инструкции.
 Представлен следующий запрос о поиске информации в базе данных:
@@ -78,6 +83,26 @@ class Chain_of_thoughts():
 Проанализируй её и ответь на поставленный вопрос."""
         answer = self.llm_request(prompt)
         print(answer)
+        return answer
+
+    def find_by_text2(self, question: str) -> dict:
+        """
+        Ищем ответ в текстовых блоках
+        """
+        filter_list = [{"gost_num": str(self.doc_num)}, {"type": "paragraph"}]
+        db_answer = self.query_to_db(question, filter_list, n_results=100)
+        #b_answer = self.query_to_db(question, filter_list)
+        print('db_answer=', db_answer)
+        db_answer = '\n'.join(db_answer['documents'][0])
+        prompt = f"""Ты исследователь текстов, который абсолютно точно соблюдает инструкции.
+Представлен следующий запрос о поиске информации в базе данных:
+{question}
+Получена информация из базы данных.
+{db_answer}
+Проанализируй её и ответь на поставленный вопрос."""
+        answer = self.llm_request(prompt)
+        print(answer)
+        return answer
 
     def find_by_tables_meta(self, question: str) -> dict:
         """
