@@ -139,7 +139,10 @@ class Chain_of_thoughts():
                     {"type": "table_body"}
                 ]
                 table_body = self.query_to_db(question, filter_list, n_results=1)
-                tables_for_analyse += table_body['documents'][0][0] + '\n'
+                if table_body is None:
+                    print("Векторная база вернула пустой ответ.")
+                else:    
+                    tables_for_analyse += table_body['documents'][0][0] + '\n'
         print("tables_for_analys:", tables_for_analyse)
         prompt = f"""Ты исследователь текстов, который абсолютно точно соблюдает инструкции.
 Представлены таблицы:

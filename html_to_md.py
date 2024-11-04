@@ -112,6 +112,7 @@ def print_tables(tables):
         c += 1
         print(t)
 
+
 def build_txt(mode: str = '', page_separator: str = '') -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
     # Temporary jast two files parsing.

@@ -35,7 +35,7 @@ STAB = 'blabla'
 def build_metatables(use_ai: bool = False) -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
     c = 0
-    bag = ''
+    bag = []
     for path in files:
         if path.endswith("chunked.md"):
             c += 1
@@ -59,8 +59,9 @@ def build_metatables(use_ai: bool = False) -> int:
         data_dict = json.loads(s)
         gost_num = data_dict['gost_num']
         gost_year = data_dict['gost_year']
-        stop = 0
+        # stop = 0
         for chunk in splitted_md:
+            metatable = {}
             meta = cc.read_tag(chunk, cc.CHUNK_META)
             if cc.is_tag_in_text(chunk, cc.CHUNK_TABLE) and (cc.CHUNK_TYPE_TABLE_BODY not in meta): 
                 chunk = cc.remove_tag(chunk, cc.CHUNK_META)
@@ -82,7 +83,9 @@ def build_metatables(use_ai: bool = False) -> int:
                      а значение это список уникальных значений в этой
                      колонке исходной таблицы.\n" Первый элемент словаря
                      должен иметь ключ "Название таблицы", а значение должно
-                     хранить название таблицы и её номер.
+                     хранить название таблицы и её номер. Описание должно быть
+                     оформлено в формате JSON. Ответ должен
+                     содержать только данные JSON  ни каких комментариев и markdown.
                     Пример:\n
                     {{\n
                     "Название таблицы": "таблица 1 - химический состав стали по анализу ковшевой пробы",\n
@@ -91,18 +94,21 @@ def build_metatables(use_ai: bool = False) -> int:
                     }}
                     """    
                     opt = {"temperature": 0.}
-                    metatable = ollama.generate(model=cc.MAIN_MODEL, prompt=query, options=opt)['response']
+                    s = ollama.generate(model=cc.MAIN_MODEL, prompt=query, options=opt)['response']
+                    s = s.replace("```json", "")
+                    s = s.replace("```", "")
+                    print(s)
+                    metatable = json.loads(s)
                     print(metatable)
                     cc.add_table_meta(bag, metatable, gost_num, gost_year)
                 else:
                     print(chunk)
-                stop += 1
-                if stop > 3:
-                    print(bag)
-                    exit(0)    
+    filename = f"{REF_DOCS_PATH}/metatables_chunked.md"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write("\n".join(bag))
 
 
 if __name__ == "__main__":
    build_metatables(use_ai=True)
-   # build_metatables()
-
+   #build_metatables()
+   
