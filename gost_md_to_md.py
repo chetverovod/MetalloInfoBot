@@ -318,7 +318,7 @@ gost_14637_89_tables_meta = [
 ]
 
 
-def build_txt(make_tables_description: bool = False, make_tags: bool = False) -> int:
+def build_txt(make_tables_description: bool = False, make_tags: bool = False, add_metatables: bool = False) -> int:
     files = [f for f in listdir(REF_DOCS_PATH) if isfile(join(REF_DOCS_PATH, f))]
     c = 0
     for path in files:
@@ -367,6 +367,11 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
             res = re.sub(pattern, '---|', res)
             pattern = r'\|\|'
             res = re.sub(pattern, '| |', res)
+            pattern = r'\[.*?\]\(https?:\/\/.*?\s*\"?.*?\"\)'
+            res = re.sub(pattern, 'ссылка', res)  # Удаляем гиперссылки.
+            pattern = r'!\[.*?\]\(https?:\/\/.*?\)'
+            res = re.sub(pattern, 'рисунок', res)  # Удаляем гиперссылки на рисунки.
+
             t_number, t_name = cc.extract_first_table_info(res)
             if t_number is not None:
                 table_number = t_number.upper()
@@ -398,14 +403,16 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
             if len(ids) > 0:
                 buf = cc.add_tag(buf, cc.CHUNK_IDS, f'{ids}')
             bag.append(buf)
-
-        if gost_num == '19281':
-            for t in gost_19281_2014_tables_meta:
-                cc.add_table_meta(bag, t, gost_num, gost_year)
         
-        if gost_num == '14637':
-            for t in gost_14637_89_tables_meta:
-                cc.add_table_meta(bag, t, gost_num, gost_year)
+        if add_metatables:
+            if gost_num == '19281':
+                for t in gost_19281_2014_tables_meta:
+                    cc.add_table_meta(bag, t, gost_num, gost_year)
+        
+            if gost_num == '14637':
+                for t in gost_14637_89_tables_meta:
+                    cc.add_table_meta(bag, t, gost_num, gost_year)
+
         bulk = "\n".join(bag)
         print(bulk)
 
@@ -508,4 +515,5 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False) ->
 
 if __name__ == "__main__":
     # build_txt() # For generate without Ai-made descriptions.
-      build_txt(make_tables_description=True, make_tags=True)
+    build_txt(make_tables_description=True, make_tags=True, add_metatables=True)
+    # build_txt(add_metatables=True)
