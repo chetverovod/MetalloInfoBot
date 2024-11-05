@@ -18,7 +18,8 @@ CHUNK_TYPE_TABLE_BODY = 'table_body'
 CHUNK_TYPE_TABLE_DESCRIPTION = "table_description"
 
 models_cfg = config.Config('models.cfg')
-BEGIN_TAG = models_cfg['begin_tag']
+ODD_BEGIN_TAG = models_cfg['odd_begin_tag']
+EVEN_BEGIN_TAG = models_cfg['even_begin_tag']
 MAIN_MODEL = models_cfg["mainmodel"]
 
 

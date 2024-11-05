@@ -53,7 +53,7 @@ wget https://storage.yandexcloud.net/natasha-navec/packs/navec_hudlit_v1_12B_500
     ```
 1.  Make and put chunks to vector db.
     ```
-    gen_reference_data.py 
+    source vector_data_gen.sh    
     ```
 
 1. In separate console run a vector database (*chromaDB*):

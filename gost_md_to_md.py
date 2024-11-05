@@ -431,8 +431,12 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False, ad
             ids = cc.read_tag(buf, cc.CHUNK_IDS)
             buf = cc.remove_tag(buf, cc.CHUNK_IDS)
 
+            if i % 2 == 0:
+                mark = cc.EVEN_BEGIN_TAG
+            else:
+                mark = cc.ODD_BEGIN_TAG      
             buf = (
-                   f'{cc.BEGIN_TAG}\n'
+                   f'{mark}\n'
                    f'<{cc.CHUNK_NUMBER} {i+1}>\n'
                    f'<{cc.CHUNK_SRC}>\n{document_name}'
                    f'\n</{cc.CHUNK_SRC}>'
@@ -463,7 +467,7 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False, ad
                 res = answer['response']
                 print('answer')
                 desc = (
-                        f'{cc.BEGIN_TAG}\n'
+                        f'{cc.ODD_BEGIN_TAG}\n'
                         f'<description_of_{cc.CHUNK_NUMBER} {i+1}>\n'
                         f'<{cc.CHUNK_SRC}>\n{document_name}'
                         f'\n</{cc.CHUNK_SRC}>'

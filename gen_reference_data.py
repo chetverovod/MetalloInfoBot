@@ -83,8 +83,13 @@ def build_collection() -> int:
             chunks = chunk_text_by_sentences(
                 source_text=text, sentences_per_chunk=7, overlap=0)
         elif CHUNKING == 'by_tags':
-            chunks = chunk_text_by_tags(
-                source_text=text, tag_of_begin=BEGIN_TAG)
+            odd_chunks = chunk_text_by_tags(
+                source_text=text.replace(EVEN_BEGIN_TAG, " "), tag_of_begin=ODD_BEGIN_TAG)
+            even_chunks = chunk_text_by_tags(
+                source_text=text.replace(ODD_BEGIN_TAG, " "), tag_of_begin=EVEN_BEGIN_TAG)
+            odd_chunks.extend(even_chunks)
+            chunks = odd_chunks
+
         else:
             raise ValueError(
                 f"CHUNKING must be 'by_sentences' or 'by_tags', not {CHUNKING}"
@@ -167,8 +172,10 @@ def init(cli_args: dict):
     COLLECTION_NAME = cfg['collection_name']
     global REF_DOCS_PATH
     REF_DOCS_PATH = cfg['reference_docs_path']
-    global BEGIN_TAG
-    BEGIN_TAG = cfg['begin_tag']
+    global ODD_BEGIN_TAG
+    ODD_BEGIN_TAG = cfg['odd_begin_tag']
+    global EVEN_BEGIN_TAG
+    EVEN_BEGIN_TAG = cfg['even_begin_tag']
     global CHUNKING
     CHUNKING = cfg['chunking']
     

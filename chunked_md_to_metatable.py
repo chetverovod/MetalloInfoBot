@@ -52,7 +52,7 @@ def build_metatables(use_ai: bool = False) -> int:
             continue
         with open(filename, "r", encoding="utf-8") as f:
             md = f.read()
-        splitted_md = md.split(cc.BEGIN_TAG) 
+        splitted_md = md.split(cc.ODD_BEGIN_TAG) 
         s = cc.read_tag(splitted_md[1], cc.CHUNK_META)
         s = s.replace("'", '"')
         print(s)

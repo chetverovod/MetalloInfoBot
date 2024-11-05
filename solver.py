@@ -73,16 +73,23 @@ def rag(context, meta_key: str = "", meta_value: str = "", show=False):
     limit = 200
     while sz < pin.num_ctx and n_res < limit:
         sz = 0
-        relevant_docs = collection.query(query_texts=(context),
-                                         n_results=n_res,
-                                         where={ meta_key: meta_value})
+        if len(meta_key) > 0:
+            relevant_docs = collection.query(query_texts=(context),
+                                             n_results=n_res,
+                                             where={ meta_key: meta_value})
+        else:
+            relevant_docs = collection.query(query_texts=(context),
+                                             n_results=n_res)
+
+        
         rag_context = relevant_docs["documents"][0]
 
         for c in rag_context:
             sz += len(c)
         n_res += 1
-    print(f"RAG volume = {sz}")
-    print(f"RAG list len = {len(rag_context)}")
+    print(colored(f'rag_prompt<{context}>', 'green'))
+    print(colored(f"RAG volume = {sz}", 'green'))
+    print(colored(f"RAG list len = {len(rag_context)}", 'green'))
     if show:
         print(colored(f'rag docs<{rag_context}>', 'green'))
     return rag_context
@@ -98,7 +105,7 @@ def clean_up_tables_list(tables_string: str) -> list[str]:
     return tables_string
 
 
-def answering_machine(question: str) -> dict:
+def answering_machine(question: str, show:bool = False) -> dict:
     """
     Вопросы к ИИ
     1. Какой тип проката в запросе?
@@ -122,11 +129,24 @@ def answering_machine(question: str) -> dict:
               'Пример:\nТребуется составить список требований к прокату, который соответствует характеристикам:\n' \
               " - исполнение: базовое\n - класс прочности: 325\n - категория: 11\n"  
                 
-    qwe[QUERY_DRY] = pin.ai(prompt, show=True)
+    qwe[QUERY_DRY] = pin.ai(prompt, show)
 
     # Получаем тип проката
     qwe[pr.PROKAT_TYPE] = pin.prokat_type(question)
     print(pr.PROKAT_TYPE, qwe[pr.PROKAT_TYPE])
+    
+    # Получаем форму проката
+    qwe[pr.FORM] = pin.form(question)
+    print(pr.FORM, qwe[pr.FORM])
+    
+    form = qwe[pr.FORM]
+    rag_prompt = f'{form}'
+    #docs = rag(rag_prompt, pr.GOST_NUM, qwe[pr.GOST_NUM], show=True)
+    docs = rag(rag_prompt, show=True)
+    prompt = f'В каких таблицах из текста: "{docs}", встречается такая форма проката как "{form}"? Перечисли названия этих таблиц.'
+    prokat_form_in_gost = pin.ai(prompt, show=True)
+    print(prokat_form_in_gost)
+    exit(0)
 
     # Получаем название ГОСТа
     qwe[pr.GOST_NUM], qwe[pr.GOST_YEAR] = pin.gost(question)
@@ -163,6 +183,7 @@ def answering_machine(question: str) -> dict:
     
     # Получаем толщину проката
     qwe[pr.THICKNESS] = pin.thickness(question)
+
 
     # Проверяем, что в ГОСТе упоминается эта толщина проката
     docs = rag('толщина', pr.GOST_NUM, qwe[pr.GOST_NUM], show=True)
@@ -235,11 +256,11 @@ def answering_machine(question: str) -> dict:
     res = clean_up_tables_list(res)
     qwe[SOLIDITY_IN_TABLES] = res
     
-    # Находим таблицы с нужным типом проката
+    # Находим таблицы с нужным типом проката  или  формой
     opt = qwe[pr.PROKAT_TYPE]
-    docs = rag(f'тип проката {opt} таблица', pr.GOST_NUM, qwe[pr.GOST_NUM], show=True)
+    docs = rag(f'тип проката {opt} или форма проката {qwe[pr.FORM]} таблица', pr.GOST_NUM, qwe[pr.GOST_NUM], show=True)
     prompt = f'В этом тексте: "{docs}", найди в каких таблицах встречается тип проката' \
-              f' "{opt}"?' \
+              f' "{opt}" или форма проката {qwe[pr.FORM]}?' \
               ' Ответь коротко. Пример: Таблица 3, Таблица 7, Таблица 9'
     res = pin.ai(prompt, show=True)
     res = clean_up_tables_list(res)
@@ -278,9 +299,11 @@ def answering_machine(question: str) -> dict:
     docs = rag_with_where(f'исполнение проката {opt} таблица', where_dict=where_dict, show=True)
 
     ct = pin.build_characteristic_table()
+    print(f'build_characteristic_table: {ct}')
     prompt_preambula = "Ты исследователь текста, который точно соблюдает инструкции.\n" 
     prompt = f'{prompt_preambula} Изучи таблицы:\n"{docs}"\n Для проката со следующими характеристиками:\n' \
-             f'{ct} Ответь на вопрос: {qwe[QUERY_DRY]}'
+             f'{ct} Ответь на вопрос: {qwe[QUERY]}'
+    # f'{ct} Ответь на вопрос: {qwe[QUERY_DRY]}'
    
     res = pin.ai(prompt, show=True)
     qwe[ANSWER] = res
@@ -313,10 +336,45 @@ query_3 = 'Какие границы для испытания на времен
 # Ответ
 answer_3 = 'Минимальная граница 370 Мпа. Максимальная граница 480 МПа.'
 res = {}
-res[1] = answering_machine(query_1)
+
+filename = 'knowledge/gost_19281_2014_text.txt'
+with open(filename, "r", encoding="utf-8") as f:
+    docs = f.read()
+#prompt = f'В этом тексте: {docs}, найди ответ на вопрос: "{query_1}"?'
+prompt = f"""Ты исследователь текстов, который абсолютно точно соблюдает инструкции.
+Имеется текст нормативно-технического документа:
+{docs}
+Этот текст необходимо разбить на обособленные по смыслу фрагменты для записи в базу данных.
+Фрагменты должны быть как можно меньшего размера, но при этом не должен теряться их смысл. 
+В выводе напечатай этот текст, разделенный на фрагменты.
+Для разделения фрагменты используй строку '----------------------------------------------------------------------------------------------------'.
+В выводе должен быть только текст без комментариев. Пример ответа:
+----------------------------------------------------------------------------------------------------
+3.23 высокий отпуск: Технологический процесс нагрева проката ниже температуры , выдержки и охлаждения его с заданной скоростью или на спокойном воздухе.
+----------------------------------------------------------------------------------------------------
+3.24 механическое старение: Процесс искусственного старения в соответствии с ГОСТ 7268.
+----------------------------------------------------------------------------------------------------
 """
+
+pin.num_ctx = 20000
+res = pin.ai(prompt, show=True)
+with open(filename + '_ch', "w", encoding="utf-8") as f:
+    docs = res.write()
+
+exit(0)
+
+filename = 'knowledge/gost_19281_2014_text.txt'
+with open(filename, "r", encoding="utf-8") as f:
+    docs = f.read()
+prompt = f'В этом тексте: {docs}, найди ответ на вопрос: "{query_1}"?'
+pin.num_ctx = 20000
+res = pin.ai(prompt, show=True)
+exit(0)
+
+res[1] = answering_machine(query_1, show=True)
 print(res[1][ANSWER])
 print(f"\nПравильный ответ:\n {answer_1}")
+"""
 
 res[2] = answering_machine(query_2)
 print(res[2][ANSWER])
@@ -325,7 +383,6 @@ print(f"\nПравильный ответ:\n {answer_2}")
 res[3] = answering_machine(query_3)
 print(res[3][ANSWER])
 print(f"\nПравильный ответ:\n {answer_3}")
-"""
 res = pin.prokat_type(query_1)
 res = pin.prokat_type(query_2)
 res = pin.prokat_type(query_3)
@@ -333,4 +390,6 @@ res = pin.prokat_type(query_3)
 res = pin.form(query_1)
 res = pin.form(query_2)
 res = pin.form(query_3)
+
+"""
 

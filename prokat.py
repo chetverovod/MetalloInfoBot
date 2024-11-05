@@ -136,68 +136,69 @@ class ProkatInfo:
         self.info[OPTION] = res
         return res
     
-    def prokat_type(self, question: str) -> str:
+    def prokat_type(self, question: str, show=False) -> str:
         preambula = f'Существующие типы металлического проката перечислены через запятую: {prokat_types}.\n'  
         prompt = f'{preambula} Какой тип проката имеется в виду в этом тексте:\n "{question}"' \
                  ' Ответь коротко, одним из перечисленных выше типов.'
-        res = self.ai(prompt)
+        res = self.ai(prompt, show)
         self.info[PROKAT_TYPE] = res
         return res
 
-    def steel_class(self, question: str) -> str:
+    def steel_class(self, question: str, show=False) -> str:
         preambula = f'Существующие классы стали проката перечислены через запятую: {steel_classes}.\n'  
         prompt = f'{preambula} Какой класс стали имеется в виду в этом тексте:\n "{question}"' \
                  '  Ответь коротко, одним из перечисленных выше типов.'
-        res = self.ai(prompt)
+        res = self.ai(prompt, show)
         self.info[STEEL_CLASS] = res
         return res
     
-    def category(self, question: str) -> str:
+    def category(self, question: str, show=False) -> str:
         preambula = f'Существующие категории проката перечислены через запятую: {categories}.\n'  
         prompt = f'{preambula} Какая категория проката имеется в виду в этом тексте:\n "{question}"' \
                  '  Ответь коротко, одним из перечисленных выше вариантов.'
-        res = self.ai(prompt)
+        res = self.ai(prompt, show)
         res = res.split(' ')[-1] 
-        self.info[STEEL_CLASS] = res
+        self.info[CATEGORY] = res
         return res
 
-    def steel_mark(self, question: str) -> str:
+    def steel_mark(self, question: str, show=False) -> str:
         preambula = ''
         prompt = f'{preambula} Какая марка стали имеется в виду в этом тексте:\n "{question}"' \
                  '  Ответь коротко.'
-        res = self.ai(prompt)
-        self.info[PROKAT_TYPE] = res
+        res = self.ai(prompt,show)
+        self.info[STEEL_MARK] = res
         return res
 
-    def form(self, question: str) -> str:
-        p_type = self.prokat_type(question)
+    def form(self, question: str, show=False) -> str:
+        p_type = self.prokat_type(question, show)
         preambula = f'Существующие две формы металлического проката перечислены через запятую: {forms}.' \
                     f' К форме {forms[0]} относят прокаты из списка {sorts}.\n' \
                     f' К форме {forms[1]} относят прокаты из списка {fasons}.\n' 
 
         prompt = f'{preambula} Какая форма проката имеется в виду в этом тексте:\n "{p_type}"' \
                  ' Ответь коротко, одним из перечисленных выше типов.'
-        res = self.ai(prompt)
+        res = self.ai(prompt, show)
         self.info[FORM] = res
         return res
 
-    def solidity_class(self, question: str) -> str:
+    def solidity_class(self, question: str, show=False) -> str:
         preambula = f'Существующие классы прочности проката перечислены через запятую: {solidity_classes}\n.' 
         prompt = f'{preambula}Какой класс прочности упомянут в тексте: "{question}"' \
                  ' Ответь одним словом.'
-        res = self.ai(prompt)
+        res = self.ai(prompt, show)
         self.info[SOLIDITY] = res
         return res
 
-    def thickness(self, question: str) -> str:
+    def thickness(self, question: str, show=False) -> str:
         prompt = f'Какая толщина упомянута в тексте: "{question}"' \
               ' Ответь одним словом.'
-        res = self.ai(prompt, show=True)
+        res = self.ai(prompt, show)
         self.info[THICKNESS] = res
         return res
 
     def build_characteristic_table(self) -> str:
         s = f'тип проката: {self.info[PROKAT_TYPE]}\n' \
+            f'форма: {self.info[FORM]}\n' \
             f'исполнение: {self.info[OPTION]}\n' \
             f'класс прочности: {self.info[SOLIDITY]}\n' \
             f'категория: {self.info[CATEGORY]}\n' \
