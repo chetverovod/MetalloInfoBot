@@ -347,6 +347,7 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False, ad
         md = re.sub(pattern, r'\1\n', md, flags=re.DOTALL | re.MULTILINE)
 
         splitted_md = md.split('\n\n')
+        #splitted_md = md.split('.\n')
 
         # Первая строчка документа должна содержать его название.
         document_name = splitted_md[0]
@@ -489,7 +490,7 @@ def build_txt(make_tables_description: bool = False, make_tags: bool = False, ad
             query = 'Это текст в формате "markdown". '\
                     " Опиши содержание этого текста тремя, четырмя ключевыми словами." \
                     " Если текст содержит таблицу, дополни список ключевых слов именем таблицы." \
-                    " Твой ответ должен сожержать только ключевые слова рахделенные запятыми." \
+                    " Твой ответ должен содержать только ключевые слова рахделенные запятыми." \
                     f" Пример: металлургия, прокат, требования.\n Вот текст для анализа:\n {buf}"
 
             if make_tags is True:

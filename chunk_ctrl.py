@@ -33,17 +33,43 @@ def read_tag(text: str, tag: str) -> str:
     return t
 
 
-def remove_tag(text: str, tag: str) -> str:
-    """Remove tag and it's data."""
+def tag_in_text(text: str, tag: str) -> str:
+    """Checks that tag is present in text."""
 
     if f'<{tag}>' in text:
-        head = text.split(f'<{tag}>')[0]
-        tail = text.split(f'</{tag}>')[1]
+        return True
+    elif f'<{tag}' in text:
+        return True
+    else:
+        return False
+
+
+def remove_tag(text: str, tag: str) -> str:
+    """Remove tag and it's data."""
+    print(text)  
+    if f'<{tag}>' in text and f'</{tag}>' in text:
+        parts = text.split(f'<{tag}>')
+        head = parts[0]
+        if len(parts) > 2:
+            buf = f'<{tag}>'.join(parts[1:-1])
+        else:
+            buf = parts[1] 
+
+        parts = buf.split(f'</{tag}>')
+        if len(parts) > 2:
+            tail = f'</{tag}>'.join(parts[1:-1])
+        else:
+            if len(parts) == 2:    
+                tail = parts[1]
+            else:
+                tail = ''    
+
         return f'{head}{tail}'
+
     if f'<{tag}' in text:  # Случай когда тэг не имеет закрывающего парного тэга.
+
         pattern = rf'<{tag}.*>'
-        return re.sub(pattern, '', text)
-    
+        return re.sub(pattern, '', text, count=1)
     return text
 
 

@@ -1,3 +1,4 @@
+import time
 from termcolor import colored
 import model_io as mio
 import ollama
@@ -355,12 +356,15 @@ prompt = f"""Ты исследователь текстов, который аб
 3.24 механическое старение: Процесс искусственного старения в соответствии с ГОСТ 7268.
 ----------------------------------------------------------------------------------------------------
 """
+start_time = time.time()
 
 pin.num_ctx = 20000
 res = pin.ai(prompt, show=True)
-with open(filename + '_ch', "w", encoding="utf-8") as f:
-    docs = res.write()
-
+out_filename = filename + '_ch'
+with open(out_filename, "w", encoding="utf-8") as f:
+    f.write(res)
+print(f"\n--- {time.time() - start_time} seconds ---")
+print(f'output filename: {out_filename}')
 exit(0)
 
 filename = 'knowledge/gost_19281_2014_text.txt'
