@@ -250,6 +250,8 @@ def main():
 
     print('\nAssistant is running.\n'
                  'Enter your question or type "q" to exit.\n')
+    print(f'embedding model: <{EMBED_MODEL}>')             
+    print(f'main model: <{MAIN_MODEL}>')             
     print(f'vector collection: <{COLLECTION_NAME}>')             
     if USE_CHAT is True:   
         print('mode: <chat>')
@@ -266,7 +268,7 @@ def main():
         query = input(query_tag)
         if query.capitalize() != 'Q' and query.capitalize() != 'Й':
             rag_context = get_rag_context(query, DEFAULT_SETTINGS_FILE, n_results=40)
-            modelquery = build_prompt(query, rag_context)
+            modelquery = build_prompt(rag_context)
             log_rag_context(query, rag_context)
 
             if USE_CHAT is True:
