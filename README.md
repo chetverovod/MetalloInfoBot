@@ -1,5 +1,14 @@
+
 # MetalloInfoBot
 Reference system based on AI (RAG+LLM) t.me/RadostTrudaMetalloInfoBot. 
+
+An API and console versions of this service are here:
+[YaRoLit](https://github.com/YaRoLit/MetalloHakaton?tab=readme-ov-file) 
+they are implemented by Yaroslav Litavrin.
+
+Detailed description of project in Russian are alsso on:
+[YaRoLit](https://github.com/YaRoLit/MetalloHakaton?tab=readme-ov-file) 
+
 
 
 ## Preparations
@@ -77,3 +86,8 @@ source bot.sh
 ```
 python model_io.py
 ```
+
+## Team
+**Igor Plastov** (chetverovod): creation of TG bot, processing of text data, creation of vector database, experiments with LLM, final assembly of the project.
+
+**Yaroslav Litavrin** (YaRoLit): processing of tabular data, experiments with LLM, preparation of standalone version.
