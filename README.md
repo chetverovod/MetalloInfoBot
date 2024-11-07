@@ -6,7 +6,7 @@ An API and console versions of this service are here:
 [YaRoLit](https://github.com/YaRoLit/MetalloHakaton?tab=readme-ov-file) 
 they are implemented by Yaroslav Litavrin.
 
-Detailed description of project in Russian are alsso on:
+Detailed description of project in Russian are also on:
 [YaRoLit](https://github.com/YaRoLit/MetalloHakaton?tab=readme-ov-file) 
 
 
